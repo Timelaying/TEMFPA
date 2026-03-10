@@ -1,64 +1,74 @@
 # TEMFPA – Football Prediction & Analysis
 
-This project is a football prediction and analysis tool built with Python and Jupyter notebooks. It uses the [soccerdata](https://pypi.org/project/soccerdata/) library to retrieve historical league tables and match results, and then organizes that data into clean pandas DataFrames for further analysis. The notebook can be used to explore how teams have performed across multiple seasons, compare head‑to‑head results between two clubs, and lay the groundwork for more advanced predictive modelling.
+This project is a football prediction and analysis tool built with Python. It uses the [soccerdata](https://pypi.org/project/soccerdata/) library to retrieve historical league tables and match results, and then organizes that data into clean pandas DataFrames for further analysis.
 
 ## Features
 
-- **Historical team positions** – fetches league tables for a given team across multiple seasons and collates their finishing positions.
-- **Match results analysis** – retrieves the match schedule for two teams, converts scores to integers, determines winners and draws, and builds a results DataFrame.
-- **Head‑to‑head comparison** – compares historical performance between two clubs over several seasons.
-- **Data summarization** – outputs pandas DataFrames that you can inspect, visualize or feed into machine learning models.
-
-## Tech Stack
-
-- **Python** – core programming language.
-- **Jupyter Notebook** – interactive development environment (`notebook.ipynb`).
-- **pandas** – data manipulation and analysis.
-- **soccerdata** – library for accessing football data from sources like FotMob.
-- *Optional:* **NumPy**, **Matplotlib** – for numerical analysis and plotting if you extend the notebook.
+- **Reusable Python package** – notebook retrieval logic is now available as importable modules.
+- **Historical team positions** – fetch league table placements for a team across multiple seasons.
+- **Match results analysis** – retrieve head‑to‑head matches, infer winners, and return a DataFrame.
+- **Command-line interface** – run analysis from the terminal without opening Jupyter.
 
 ## Project Structure
 
-```
+```text
 TEMFPA/
-├── notebook.ipynb        # Jupyter notebook with data collection and analysis functions
-├── READ.me              # Legacy read me (not used)
-└── README.md            # You are here
+├── notebook.ipynb
+├── pyproject.toml
+├── setup.py
+├── src/
+│   └── temfpa/
+│       ├── __init__.py
+│       ├── cli.py
+│       └── retrieval.py
+└── tests/
+    └── test_retrieval.py
 ```
 
-## Getting Started
-
-1. **Clone the repository**
-
-```bash
-git clone https://github.com/Timelaying/TEMFPA.git
-cd TEMFPA
-```
-
-2. **Install dependencies**  
-   Create a virtual environment (recommended) and install the required libraries:
+## Installation
 
 ```bash
 python -m venv venv
-source venv/bin/activate     # On Windows use: venv\Scripts\activate
-pip install soccerdata pandas jupyter
+source venv/bin/activate
+pip install -e .
 ```
 
-3. **Run the notebook**
+## Python API
+
+```python
+from temfpa import get_team_position, get_match_results
+
+positions = get_team_position(
+    "Manchester City",
+    seasons=["2023/2024", "2022/2023"],
+)
+
+results = get_match_results(
+    "Manchester City",
+    "Liverpool",
+    seasons=["2023/2024", "2022/2023"],
+)
+```
+
+## CLI Usage
+
+Team league positions:
 
 ```bash
-jupyter notebook notebook.ipynb
+temfpa positions "Manchester City" --seasons "2023/2024,2022/2023"
 ```
 
-   Modify the `team_name`, `team1`, and `team2` variables in the notebook to select the teams you’re interested in, and adjust the `seasons` list to define the seasons you want to analyse. Then run the cells to fetch and view the data.
+Head-to-head match results:
 
-## Roadmap
+```bash
+temfpa matches "Manchester City" "Liverpool" --seasons "2023/2024,2022/2023"
+```
 
-- Add machine learning models (e.g. logistic regression, random forest) to predict match outcomes based on historical data.
-- Incorporate additional leagues, competitions, and metrics (e.g. goals scored, goal difference, expected goals).
-- Add data visualization (plots and charts) to make insights easier to digest.
-- Package the data collection functions into a reusable Python module.
+Optional flags:
+- `--league` (default: `ENG-Premier League`)
 
-## License
+## Testing
 
-This project is open‑source and available under the MIT License. See the [LICENSE](LICENSE) file for details.
+```bash
+pytest -q
+```

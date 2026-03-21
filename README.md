@@ -30,8 +30,11 @@ TEMFPA/
 ```bash
 python -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
 pip install -e .
 ```
+
+The pinned versions in `requirements.txt` make the notebook and package dependencies reproducible across environments.
 
 ## Python API
 

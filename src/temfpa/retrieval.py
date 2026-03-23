@@ -22,13 +22,29 @@ def get_team_position(
         league_table["position"] = league_table.index + 1
 
         team_position = league_table[league_table["team"] == team_name].copy()
-        team_position.loc[:, "season"] = season
+        team_position["season"] = season
         results.append(team_position)
 
     if not results:
         return pd.DataFrame()
 
     return pd.concat(results, ignore_index=True)
+
+
+def _get_match_winner(row: pd.Series) -> str | pd.NA:
+    """Infer the winner from a schedule row, or return missing when scores are absent."""
+    if pd.isna(row["home_score"]) or pd.isna(row["away_score"]):
+        return pd.NA
+
+    home_score = int(row["home_score"])
+    away_score = int(row["away_score"])
+
+    if home_score > away_score:
+        return row["home_team"]
+    if home_score < away_score:
+        return row["away_team"]
+    return "Draw"
+
 
 
 def get_match_results(
@@ -52,17 +68,7 @@ def get_match_results(
         for _, row in team_matches.iterrows():
             match_info = row.to_dict()
             match_info["season"] = season
-
-            home_score = int(row["home_score"])
-            away_score = int(row["away_score"])
-
-            if home_score > away_score:
-                match_info["winner"] = row["home_team"]
-            elif home_score < away_score:
-                match_info["winner"] = row["away_team"]
-            else:
-                match_info["winner"] = "Draw"
-
+            match_info["winner"] = _get_match_winner(row)
             match_data.append(match_info)
 
     return pd.DataFrame(match_data)

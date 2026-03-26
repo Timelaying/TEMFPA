@@ -147,3 +147,52 @@ def test_get_match_results_returns_empty_dataframe_when_no_fixture_exists():
 
     assert df.empty
     assert FakeFotMob.calls == [("ESP-La Liga", "2023/2024")]
+
+
+class ErrorFotMob(FakeFotMob):
+    def read_league_table(self):
+        if self.seasons == "2022/2023":
+            raise RuntimeError("network failure")
+        return super().read_league_table()
+
+    def read_schedule(self):
+        if self.seasons == "2022/2023":
+            raise RuntimeError("network failure")
+        return super().read_schedule()
+
+
+def test_get_team_position_skips_season_when_fetch_fails(monkeypatch):
+    FakeFotMob.calls = []
+    monkeypatch.setattr("temfpa.retrieval.sd.FotMob", ErrorFotMob)
+
+    df = get_team_position(
+        "Manchester City",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024", "2022/2023"],
+    )
+
+    assert list(df["team"]) == ["Manchester City"]
+    assert list(df["season"]) == ["2023/2024"]
+    assert FakeFotMob.calls == [
+        ("ENG-Premier League", "2023/2024"),
+        ("ENG-Premier League", "2022/2023"),
+    ]
+
+
+def test_get_match_results_skips_season_when_fetch_fails(monkeypatch):
+    FakeFotMob.calls = []
+    monkeypatch.setattr("temfpa.retrieval.sd.FotMob", ErrorFotMob)
+
+    df = get_match_results(
+        "Manchester City",
+        "Liverpool",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024", "2022/2023"],
+    )
+
+    assert len(df) == 2
+    assert list(df["season"]) == ["2023/2024", "2023/2024"]
+    assert FakeFotMob.calls == [
+        ("ENG-Premier League", "2023/2024"),
+        ("ENG-Premier League", "2022/2023"),
+    ]

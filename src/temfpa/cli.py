@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import logging
 
 from temfpa.retrieval import get_match_results, get_team_position
+
+logger = logging.getLogger(__name__)
 
 
 def parse_seasons(raw: str) -> list[str]:
@@ -38,6 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
     parser = build_parser()
     args = parser.parse_args()
     seasons = parse_seasons(args.seasons)
@@ -48,10 +52,11 @@ def main() -> None:
         df = get_match_results(args.team1, args.team2, leagues=args.league, seasons=seasons)
 
     if df.empty:
-        print("No data found for the provided input.")
+        logger.warning("No data found for the provided input.")
         return
 
-    print(df.to_string(index=False))
+    logger.info("Retrieved %s records.", len(df))
+    logger.info("\n%s", df.to_string(index=False))
 
 
 if __name__ == "__main__":

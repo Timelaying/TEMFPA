@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Iterable
 
 import pandas as pd
 import soccerdata as sd
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_team_position(
@@ -17,8 +21,18 @@ def get_team_position(
     results: list[pd.DataFrame] = []
 
     for season in seasons:
-        fotmob = sd.FotMob(leagues=leagues, seasons=season)
-        league_table = fotmob.read_league_table().reset_index(drop=True)
+        try:
+            fotmob = sd.FotMob(leagues=leagues, seasons=season)
+            league_table = fotmob.read_league_table().reset_index(drop=True)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Failed to fetch league table for league=%s season=%s: %s",
+                leagues,
+                season,
+                exc,
+            )
+            continue
+
         league_table["position"] = league_table.index + 1
 
         team_position = league_table[league_table["team"] == team_name].copy()
@@ -57,8 +71,17 @@ def get_match_results(
     match_data: list[dict] = []
 
     for season in seasons:
-        fotmob = sd.FotMob(leagues=leagues, seasons=season)
-        schedule = fotmob.read_schedule()
+        try:
+            fotmob = sd.FotMob(leagues=leagues, seasons=season)
+            schedule = fotmob.read_schedule()
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Failed to fetch match schedule for league=%s season=%s: %s",
+                leagues,
+                season,
+                exc,
+            )
+            continue
 
         team_matches = schedule[
             ((schedule["home_team"] == team1) & (schedule["away_team"] == team2))

@@ -74,11 +74,17 @@ def patch_fotmob(monkeypatch):
     monkeypatch.setattr("temfpa.retrieval.sd.FotMob", FakeFotMob)
 
 
-def test_get_team_position_combines_multiple_seasons_with_positions():
+@pytest.fixture
+def cache_dir(tmp_path):
+    return tmp_path / "cache"
+
+
+def test_get_team_position_combines_multiple_seasons_with_positions(cache_dir):
     df = get_team_position(
         "Manchester City",
         leagues="ENG-Premier League",
         seasons=["2023/2024", "2022/2023"],
+        cache_dir=cache_dir,
     )
 
     assert list(df["team"]) == ["Manchester City", "Manchester City"]
@@ -98,9 +104,9 @@ def test_get_team_position_combines_multiple_seasons_with_positions():
     ],
 )
 def test_get_team_position_handles_different_leagues_and_missing_team(
-    league, team_name, expected_team, expected_position
+    cache_dir, league, team_name, expected_team, expected_position
 ):
-    df = get_team_position(team_name, leagues=league, seasons=["2023/2024"])
+    df = get_team_position(team_name, leagues=league, seasons=["2023/2024"], cache_dir=cache_dir)
 
     if expected_team is None:
         assert df.empty
@@ -118,12 +124,13 @@ def test_get_team_position_handles_different_leagues_and_missing_team(
     ]
 
 
-def test_get_match_results_combines_seasons_and_tracks_winner_states():
+def test_get_match_results_combines_seasons_and_tracks_winner_states(cache_dir):
     df = get_match_results(
         "Manchester City",
         "Liverpool",
         leagues="ENG-Premier League",
         seasons=["2023/2024", "2022/2023"],
+        cache_dir=cache_dir,
     )
 
     assert len(df) == 4
@@ -137,12 +144,13 @@ def test_get_match_results_combines_seasons_and_tracks_winner_states():
     ]
 
 
-def test_get_match_results_returns_empty_dataframe_when_no_fixture_exists():
+def test_get_match_results_returns_empty_dataframe_when_no_fixture_exists(cache_dir):
     df = get_match_results(
         "Real Madrid",
         "Girona",
         leagues="ESP-La Liga",
         seasons=["2023/2024"],
+        cache_dir=cache_dir,
     )
 
     assert df.empty
@@ -161,7 +169,7 @@ class ErrorFotMob(FakeFotMob):
         return super().read_schedule()
 
 
-def test_get_team_position_skips_season_when_fetch_fails(monkeypatch):
+def test_get_team_position_skips_season_when_fetch_fails(monkeypatch, cache_dir):
     FakeFotMob.calls = []
     monkeypatch.setattr("temfpa.retrieval.sd.FotMob", ErrorFotMob)
 
@@ -169,6 +177,7 @@ def test_get_team_position_skips_season_when_fetch_fails(monkeypatch):
         "Manchester City",
         leagues="ENG-Premier League",
         seasons=["2023/2024", "2022/2023"],
+        cache_dir=cache_dir,
     )
 
     assert list(df["team"]) == ["Manchester City"]
@@ -179,7 +188,7 @@ def test_get_team_position_skips_season_when_fetch_fails(monkeypatch):
     ]
 
 
-def test_get_match_results_skips_season_when_fetch_fails(monkeypatch):
+def test_get_match_results_skips_season_when_fetch_fails(monkeypatch, cache_dir):
     FakeFotMob.calls = []
     monkeypatch.setattr("temfpa.retrieval.sd.FotMob", ErrorFotMob)
 
@@ -188,6 +197,7 @@ def test_get_match_results_skips_season_when_fetch_fails(monkeypatch):
         "Liverpool",
         leagues="ENG-Premier League",
         seasons=["2023/2024", "2022/2023"],
+        cache_dir=cache_dir,
     )
 
     assert len(df) == 2
@@ -196,3 +206,62 @@ def test_get_match_results_skips_season_when_fetch_fails(monkeypatch):
         ("ENG-Premier League", "2023/2024"),
         ("ENG-Premier League", "2022/2023"),
     ]
+
+
+def test_cache_is_reused_for_positions(cache_dir):
+    first = get_team_position(
+        "Manchester City",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024"],
+        cache_dir=cache_dir,
+    )
+    assert len(first) == 1
+    assert FakeFotMob.calls == [("ENG-Premier League", "2023/2024")]
+
+    FakeFotMob.calls = []
+    second = get_team_position(
+        "Manchester City",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024"],
+        cache_dir=cache_dir,
+    )
+
+    assert len(second) == 1
+    assert FakeFotMob.calls == []
+
+
+def test_offline_mode_reads_cached_schedule_without_network(cache_dir):
+    online = get_match_results(
+        "Manchester City",
+        "Liverpool",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024"],
+        cache_dir=cache_dir,
+    )
+    assert len(online) == 2
+
+    FakeFotMob.calls = []
+    offline = get_match_results(
+        "Manchester City",
+        "Liverpool",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024"],
+        cache_dir=cache_dir,
+        offline=True,
+    )
+
+    assert len(offline) == 2
+    assert FakeFotMob.calls == []
+
+
+def test_offline_mode_without_cache_returns_empty_data(cache_dir):
+    df = get_team_position(
+        "Manchester City",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024"],
+        cache_dir=cache_dir,
+        offline=True,
+    )
+
+    assert df.empty
+    assert FakeFotMob.calls == []

@@ -8,6 +8,7 @@ This project is a football prediction and analysis tool built with Python. It us
 - **Historical team positions** – fetch league table placements for a team across multiple seasons.
 - **Match results analysis** – retrieve head‑to‑head matches, infer winners, and return a DataFrame.
 - **Command-line interface** – run analysis from the terminal without opening Jupyter.
+- **Local caching for persistence** – fetched FotMob league tables and schedules are cached for faster repeat queries and offline analysis.
 
 ## Project Structure
 
@@ -69,6 +70,10 @@ temfpa matches "Manchester City" "Liverpool" --seasons "2023/2024,2022/2023"
 
 Optional flags:
 - `--league` (default: `ENG-Premier League`)
+- `--cache-dir` (default: `$TEMFPA_CACHE_DIR` or `~/.cache/temfpa`)
+- `--offline` (use cached data only, no network calls)
+
+You can also set `TEMFPA_CACHE_DIR` to configure a persistent cache location for scripts and notebooks.
 
 ## Testing
 

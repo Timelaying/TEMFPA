@@ -26,6 +26,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated seasons, e.g. '2023/2024,2022/2023'",
     )
     positions.add_argument("--league", default="ENG-Premier League")
+    positions.add_argument(
+        "--cache-dir",
+        default=None,
+        help="Optional cache directory. Defaults to $TEMFPA_CACHE_DIR or ~/.cache/temfpa",
+    )
+    positions.add_argument(
+        "--offline",
+        action="store_true",
+        help="Use cached data only and skip external FotMob fetches.",
+    )
 
     matches = subparsers.add_parser("matches", help="Get head-to-head match results")
     matches.add_argument("team1")
@@ -36,6 +46,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated seasons, e.g. '2023/2024,2022/2023'",
     )
     matches.add_argument("--league", default="ENG-Premier League")
+    matches.add_argument(
+        "--cache-dir",
+        default=None,
+        help="Optional cache directory. Defaults to $TEMFPA_CACHE_DIR or ~/.cache/temfpa",
+    )
+    matches.add_argument(
+        "--offline",
+        action="store_true",
+        help="Use cached data only and skip external FotMob fetches.",
+    )
 
     return parser
 
@@ -47,9 +67,22 @@ def main() -> None:
     seasons = parse_seasons(args.seasons)
 
     if args.command == "positions":
-        df = get_team_position(args.team, leagues=args.league, seasons=seasons)
+        df = get_team_position(
+            args.team,
+            leagues=args.league,
+            seasons=seasons,
+            cache_dir=args.cache_dir,
+            offline=args.offline,
+        )
     else:
-        df = get_match_results(args.team1, args.team2, leagues=args.league, seasons=seasons)
+        df = get_match_results(
+            args.team1,
+            args.team2,
+            leagues=args.league,
+            seasons=seasons,
+            cache_dir=args.cache_dir,
+            offline=args.offline,
+        )
 
     if df.empty:
         logger.warning("No data found for the provided input.")

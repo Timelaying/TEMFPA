@@ -7,6 +7,10 @@ This project is a football prediction and analysis tool built with Python. It us
 - **Reusable Python package** – notebook retrieval logic is now available as importable modules.
 - **Historical team positions** – fetch league table placements for a team across multiple seasons.
 - **Match results analysis** – retrieve head‑to‑head matches, infer winners, and return a DataFrame.
+- **Machine learning predictions** – train logistic regression and random forest models on historical fixtures.
+- **Extended metrics** – derive goals scored, total goals, goal difference, and expected-goals proxy (`home_xg`/`away_xg`).
+- **Data visualization** – generate goals charts for fixtures.
+- **Batch head-to-head analysis** – process multiple team-pair analyses at once and export to CSV/Excel.
 - **Command-line interface** – run analysis from the terminal without opening Jupyter.
 - **Local caching for persistence** – fetched FotMob league tables and schedules are cached for faster repeat queries and offline analysis.
 
@@ -79,4 +83,15 @@ You can also set `TEMFPA_CACHE_DIR` to configure a persistent cache location for
 
 ```bash
 pytest -q
+```
+
+
+## Extended CLI
+
+```bash
+# model benchmarking
+temfpa predict "Manchester City" "Liverpool" --seasons "2023/2024,2022/2023"
+
+# batch H2H + export + chart
+temfpa batch-h2h --pairs "Manchester City|Liverpool;Real Madrid|Barcelona" --seasons "2023/2024" --export reports/h2h.xlsx --plot reports/goals.png
 ```

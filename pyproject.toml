@@ -11,6 +11,9 @@ requires-python = ">=3.9"
 dependencies = [
   "pandas>=1.5",
   "soccerdata>=1.8",
+  "scikit-learn>=1.4",
+  "matplotlib>=3.8",
+  "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]

@@ -50,9 +50,15 @@ def predict_match_outcomes(matches: pd.DataFrame) -> dict[str, float]:
     if len(model_df) < 4 or len(y.unique()) < 2:
         return {"logistic_regression_accuracy": 0.0, "random_forest_accuracy": 0.0}
 
-    x_train, x_test, y_train, y_test = train_test_split(
-        model_df, y, test_size=0.25, random_state=42, stratify=y
-    )
+    n_classes = len(y.unique())
+    test_size = max(0.25, n_classes / len(model_df))
+
+    try:
+        x_train, x_test, y_train, y_test = train_test_split(
+            model_df, y, test_size=test_size, random_state=42, stratify=y
+        )
+    except ValueError:
+        return {"logistic_regression_accuracy": 0.0, "random_forest_accuracy": 0.0}
 
     lr = LogisticRegression(max_iter=1000)
     lr.fit(x_train, y_train)

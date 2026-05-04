@@ -1,97 +1,115 @@
 # TEMFPA – Football Prediction & Analysis
 
-This project is a football prediction and analysis tool built with Python. It uses the [soccerdata](https://pypi.org/project/soccerdata/) library to retrieve historical league tables and match results, and then organizes that data into clean pandas DataFrames for further analysis.
+TEMFPA is a Python toolkit for football data retrieval, head-to-head analysis, and simple match-outcome modeling. It builds on [`soccerdata`](https://pypi.org/project/soccerdata/) and returns clean `pandas` DataFrames for scripting, notebooks, and CLI workflows.
 
 ## Features
 
-- **Reusable Python package** – notebook retrieval logic is now available as importable modules.
-- **Historical team positions** – fetch league table placements for a team across multiple seasons.
-- **Match results analysis** – retrieve head‑to‑head matches, infer winners, and return a DataFrame.
-- **Machine learning predictions** – train logistic regression and random forest models on historical fixtures.
-- **Extended metrics** – derive goals scored, total goals, goal difference, and expected-goals proxy (`home_xg`/`away_xg`).
-- **Data visualization** – generate goals charts for fixtures.
-- **Batch head-to-head analysis** – process multiple team-pair analyses at once and export to CSV/Excel.
-- **Command-line interface** – run analysis from the terminal without opening Jupyter.
-- **Local caching for persistence** – fetched FotMob league tables and schedules are cached for faster repeat queries and offline analysis.
-
-## Project Structure
-
-```text
-TEMFPA/
-├── notebook.ipynb
-├── pyproject.toml
-├── setup.py
-├── src/
-│   └── temfpa/
-│       ├── __init__.py
-│       ├── cli.py
-│       └── retrieval.py
-└── tests/
-    └── test_retrieval.py
-```
+- Reusable package API for league table and fixture retrieval.
+- Head-to-head match extraction with winner inference (`home`, `away`, or `Draw`).
+- Derived metrics including goal difference, total goals, and rolling xG proxies.
+- Baseline model benchmarking with logistic regression and random forest classifiers.
+- Batch processing for multiple team pairs.
+- CSV/XLSX export utilities and goals chart generation.
+- File-based local caching with optional offline mode.
+- Command-line interface for all major workflows.
 
 ## Installation
 
 ```bash
-python -m venv venv
-source venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
 ```
 
-The pinned versions in `requirements.txt` make the notebook and package dependencies reproducible across environments.
-
-## Python API
+## Quick Start (Python API)
 
 ```python
-from temfpa import get_team_position, get_match_results
+from temfpa import get_match_results, get_team_position
+from temfpa.analytics import add_match_metrics, predict_match_outcomes
 
 positions = get_team_position(
     "Manchester City",
     seasons=["2023/2024", "2022/2023"],
 )
 
-results = get_match_results(
+matches = get_match_results(
     "Manchester City",
     "Liverpool",
     seasons=["2023/2024", "2022/2023"],
 )
+
+metrics = add_match_metrics(matches)
+benchmark = predict_match_outcomes(matches)
 ```
 
 ## CLI Usage
 
-Team league positions:
+Get league positions for one team:
 
 ```bash
 temfpa positions "Manchester City" --seasons "2023/2024,2022/2023"
 ```
 
-Head-to-head match results:
+Get head-to-head match results:
 
 ```bash
 temfpa matches "Manchester City" "Liverpool" --seasons "2023/2024,2022/2023"
 ```
 
-Optional flags:
+Run prediction benchmark:
+
+```bash
+temfpa predict "Manchester City" "Liverpool" --seasons "2023/2024,2022/2023"
+```
+
+Batch analyze multiple pairs and export:
+
+```bash
+temfpa batch-h2h \
+  --pairs "Manchester City|Liverpool;Real Madrid|Barcelona" \
+  --seasons "2023/2024" \
+  --export reports/h2h.xlsx \
+  --plot reports/goals.png
+```
+
+Optional flags shared across commands:
+
 - `--league` (default: `ENG-Premier League`)
 - `--cache-dir` (default: `$TEMFPA_CACHE_DIR` or `~/.cache/temfpa`)
-- `--offline` (use cached data only, no network calls)
+- `--offline` (uses cache only; no network calls)
 
-You can also set `TEMFPA_CACHE_DIR` to configure a persistent cache location for scripts and notebooks.
+## Cache Behavior
 
-## Testing
+TEMFPA caches league tables and schedules per `(category, league, season)` tuple in pickle files.
+
+- By default, cache files are written to `~/.cache/temfpa`.
+- Set `TEMFPA_CACHE_DIR` to use another persistent location.
+- Use `--offline` (CLI) or `offline=True` (API) to force cache-only behavior.
+
+## Development
+
+Run tests:
 
 ```bash
 pytest -q
 ```
 
+## Project Structure
 
-## Extended CLI
-
-```bash
-# model benchmarking
-temfpa predict "Manchester City" "Liverpool" --seasons "2023/2024,2022/2023"
-
-# batch H2H + export + chart
-temfpa batch-h2h --pairs "Manchester City|Liverpool;Real Madrid|Barcelona" --seasons "2023/2024" --export reports/h2h.xlsx --plot reports/goals.png
+```text
+TEMFPA/
+├── README.md
+├── pyproject.toml
+├── requirements.txt
+├── setup.py
+├── src/
+│   └── temfpa/
+│       ├── __init__.py
+│       ├── analytics.py
+│       ├── cli.py
+│       └── retrieval.py
+└── tests/
+    ├── test_analytics.py
+    └── test_retrieval.py
 ```

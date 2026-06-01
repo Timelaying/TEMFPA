@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import pickle
+import sqlite3
 from pathlib import Path
 from typing import Iterable
 
@@ -16,25 +18,96 @@ logger = logging.getLogger(__name__)
 
 
 class DataCache:
-    """Simple file-based cache for FotMob tables and schedules."""
+    """Cache FotMob tables and schedules using files or a SQLite database."""
 
-    def __init__(self, cache_dir: str | Path | None = None):
+    def __init__(
+        self,
+        cache_dir: str | Path | None = None,
+        db_path: str | Path | None = None,
+    ):
+        configured_db_path = db_path or os.getenv("TEMFPA_DB_PATH")
+        self.db_path = Path(configured_db_path).expanduser() if configured_db_path else None
+        self.cache_dir: Path | None = None
+
+        if self.db_path is not None:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            self._initialize_database()
+            return
+
         base_dir = cache_dir or os.getenv("TEMFPA_CACHE_DIR", "~/.cache/temfpa")
         self.cache_dir = Path(base_dir).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
+    def _initialize_database(self) -> None:
+        with sqlite3.connect(self.db_path) as connection:
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS cache_entries (
+                    category TEXT NOT NULL,
+                    league TEXT NOT NULL,
+                    season TEXT NOT NULL,
+                    data BLOB NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (category, league, season)
+                )
+                """
+            )
+
     def _path_for(self, category: str, league: str, season: str) -> Path:
         raw_key = f"{category}:{league}:{season}".encode("utf-8")
         key = hashlib.sha256(raw_key).hexdigest()[:16]
+        if self.cache_dir is None:
+            raise RuntimeError("File cache path requested while SQLite cache is enabled.")
         return self.cache_dir / f"{category}_{key}.pkl"
 
     def load(self, category: str, league: str, season: str) -> pd.DataFrame | None:
+        if self.db_path is not None:
+            with sqlite3.connect(self.db_path) as connection:
+                row = connection.execute(
+                    """
+                    SELECT data FROM cache_entries
+                    WHERE category = ? AND league = ? AND season = ?
+                    """,
+                    (category, league, season),
+                ).fetchone()
+            if row is None:
+                return None
+            return pickle.loads(row[0])
+
         cache_path = self._path_for(category, league, season)
         if not cache_path.exists():
             return None
         return pd.read_pickle(cache_path)
 
     def save(self, category: str, league: str, season: str, data: pd.DataFrame) -> None:
+        if self.db_path is not None:
+            payload = pickle.dumps(data)
+            with sqlite3.connect(self.db_path) as connection:
+                connection.execute(
+                    """
+                    INSERT OR REPLACE INTO cache_entries (
+                        category, league, season, data, created_at, updated_at
+                    )
+                    VALUES (
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        COALESCE(
+                            (
+                                SELECT created_at FROM cache_entries
+                                WHERE category = ? AND league = ? AND season = ?
+                            ),
+                            CURRENT_TIMESTAMP
+                        ),
+                        CURRENT_TIMESTAMP
+                    )
+                    """,
+                    (category, league, season, payload, category, league, season),
+                )
+            return
+
         cache_path = self._path_for(category, league, season)
         data.to_pickle(cache_path)
 
@@ -69,11 +142,12 @@ def get_team_position(
     seasons: Iterable[str] = ("2023/2024",),
     *,
     cache_dir: str | Path | None = None,
+    db_path: str | Path | None = None,
     offline: bool = False,
 ) -> pd.DataFrame:
     """Return league-table rows for a single team across multiple seasons."""
     results: list[pd.DataFrame] = []
-    cache = DataCache(cache_dir)
+    cache = DataCache(cache_dir, db_path=db_path)
 
     for season in seasons:
         try:
@@ -130,11 +204,12 @@ def get_match_results(
     seasons: Iterable[str] = ("2023/2024",),
     *,
     cache_dir: str | Path | None = None,
+    db_path: str | Path | None = None,
     offline: bool = False,
 ) -> pd.DataFrame:
     """Return all fixtures between two teams and infer winner/draw from scores."""
     match_data: list[dict] = []
-    cache = DataCache(cache_dir)
+    cache = DataCache(cache_dir, db_path=db_path)
 
     for season in seasons:
         try:
@@ -143,7 +218,9 @@ def get_match_results(
                 category="schedule",
                 league=leagues,
                 season=season,
-                fetcher=lambda: sd.FotMob(leagues=leagues, seasons=season).read_schedule(),
+                fetcher=lambda: sd.FotMob(
+                    leagues=leagues, seasons=season
+                ).read_schedule(),
                 offline=offline,
             )
         except Exception as exc:  # noqa: BLE001

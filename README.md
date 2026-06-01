@@ -10,7 +10,7 @@ TEMFPA is a Python toolkit for football data retrieval, head-to-head analysis, a
 - Baseline model benchmarking with logistic regression and random forest classifiers.
 - Batch processing for multiple team pairs.
 - CSV/XLSX export utilities and goals chart generation.
-- File-based local caching with optional offline mode.
+- File-based or SQLite-backed local caching with optional offline mode.
 - Command-line interface for all major workflows.
 
 ## Installation
@@ -77,15 +77,25 @@ Optional flags shared across commands:
 
 - `--league` (default: `ENG-Premier League`)
 - `--cache-dir` (default: `$TEMFPA_CACHE_DIR` or `~/.cache/temfpa`)
+- `--db-path` (optional SQLite cache path; overrides file cache when set)
 - `--offline` (uses cache only; no network calls)
 
 ## Cache Behavior
 
-TEMFPA caches league tables and schedules per `(category, league, season)` tuple in pickle files.
+TEMFPA caches league tables and schedules per `(category, league, season)` tuple. By default it stores pickle files, and it can also store cached frames in a SQLite database.
 
 - By default, cache files are written to `~/.cache/temfpa`.
-- Set `TEMFPA_CACHE_DIR` to use another persistent location.
+- Set `TEMFPA_CACHE_DIR` to use another persistent file-cache location.
+- Pass `--db-path data/temfpa.sqlite`, set `TEMFPA_DB_PATH`, or pass `db_path=` in Python to use SQLite instead of the file cache.
 - Use `--offline` (CLI) or `offline=True` (API) to force cache-only behavior.
+
+Example SQLite-backed CLI usage:
+
+```bash
+temfpa matches "Manchester City" "Liverpool" \
+  --seasons "2023/2024,2022/2023" \
+  --db-path data/temfpa.sqlite
+```
 
 ## Development
 

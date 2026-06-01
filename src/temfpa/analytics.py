@@ -80,6 +80,7 @@ def batch_head_to_head(
     leagues: str,
     seasons: Iterable[str],
     cache_dir: str | Path | None = None,
+    db_path: str | Path | None = None,
     offline: bool = False,
 ) -> pd.DataFrame:
     """Run head-to-head analysis for multiple team pairs."""
@@ -91,6 +92,7 @@ def batch_head_to_head(
             leagues=leagues,
             seasons=seasons,
             cache_dir=cache_dir,
+            db_path=db_path,
             offline=offline,
         )
         metrics = add_match_metrics(matches)

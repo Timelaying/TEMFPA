@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from temfpa.retrieval import get_match_results, get_team_position
+from temfpa.retrieval import DataCache, get_match_results, get_team_position
 
 
 LEAGUE_TABLES = {
@@ -265,3 +265,48 @@ def test_offline_mode_without_cache_returns_empty_data(cache_dir):
 
     assert df.empty
     assert FakeFotMob.calls == []
+
+
+def test_sqlite_cache_is_reused_for_positions(tmp_path):
+    db_path = tmp_path / "temfpa.sqlite"
+
+    first = get_team_position(
+        "Manchester City",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024"],
+        db_path=db_path,
+    )
+    assert len(first) == 1
+    assert FakeFotMob.calls == [("ENG-Premier League", "2023/2024")]
+
+    FakeFotMob.calls = []
+    second = get_team_position(
+        "Manchester City",
+        leagues="ENG-Premier League",
+        seasons=["2023/2024"],
+        db_path=db_path,
+        offline=True,
+    )
+
+    assert len(second) == 1
+    assert FakeFotMob.calls == []
+    assert db_path.exists()
+
+
+def test_data_cache_uses_env_db_path(monkeypatch, tmp_path):
+    db_path = tmp_path / "env-cache.sqlite"
+    monkeypatch.setenv("TEMFPA_DB_PATH", str(db_path))
+
+    cache = DataCache()
+    cache.save(
+        "schedule",
+        "ENG-Premier League",
+        "2023/2024",
+        SCHEDULES[("ENG-Premier League", "2023/2024")],
+    )
+
+    loaded = cache.load("schedule", "ENG-Premier League", "2023/2024")
+
+    assert loaded is not None
+    assert loaded.equals(SCHEDULES[("ENG-Premier League", "2023/2024")])
+    assert db_path.exists()

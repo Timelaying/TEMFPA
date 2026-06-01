@@ -39,6 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     positions.add_argument("--seasons", default="2023/2024")
     positions.add_argument("--league", default="ENG-Premier League")
     positions.add_argument("--cache-dir", default=None)
+    positions.add_argument("--db-path", default=None)
     positions.add_argument("--offline", action="store_true")
 
     matches = subparsers.add_parser("matches", help="Get head-to-head match results")
@@ -47,6 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     matches.add_argument("--seasons", default="2023/2024")
     matches.add_argument("--league", default="ENG-Premier League")
     matches.add_argument("--cache-dir", default=None)
+    matches.add_argument("--db-path", default=None)
     matches.add_argument("--offline", action="store_true")
 
     predict = subparsers.add_parser("predict", help="Train models for a team pair")
@@ -55,6 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
     predict.add_argument("--seasons", default="2023/2024,2022/2023")
     predict.add_argument("--league", default="ENG-Premier League")
     predict.add_argument("--cache-dir", default=None)
+    predict.add_argument("--db-path", default=None)
     predict.add_argument("--offline", action="store_true")
 
     batch = subparsers.add_parser("batch-h2h", help="Analyze multiple team pairs")
@@ -62,6 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
     batch.add_argument("--seasons", default="2023/2024")
     batch.add_argument("--league", default="ENG-Premier League")
     batch.add_argument("--cache-dir", default=None)
+    batch.add_argument("--db-path", default=None)
     batch.add_argument("--offline", action="store_true")
     batch.add_argument("--export", default=None, help="Optional output .csv/.xlsx path")
     batch.add_argument("--plot", default=None, help="Optional output chart image path")
@@ -76,17 +80,47 @@ def main() -> None:
     seasons = parse_seasons(args.seasons)
 
     if args.command == "positions":
-        df = get_team_position(args.team, leagues=args.league, seasons=seasons, cache_dir=args.cache_dir, offline=args.offline)
+        df = get_team_position(
+            args.team,
+            leagues=args.league,
+            seasons=seasons,
+            cache_dir=args.cache_dir,
+            db_path=args.db_path,
+            offline=args.offline,
+        )
     elif args.command == "matches":
-        df = get_match_results(args.team1, args.team2, leagues=args.league, seasons=seasons, cache_dir=args.cache_dir, offline=args.offline)
+        df = get_match_results(
+            args.team1,
+            args.team2,
+            leagues=args.league,
+            seasons=seasons,
+            cache_dir=args.cache_dir,
+            db_path=args.db_path,
+            offline=args.offline,
+        )
     elif args.command == "predict":
-        df = get_match_results(args.team1, args.team2, leagues=args.league, seasons=seasons, cache_dir=args.cache_dir, offline=args.offline)
+        df = get_match_results(
+            args.team1,
+            args.team2,
+            leagues=args.league,
+            seasons=seasons,
+            cache_dir=args.cache_dir,
+            db_path=args.db_path,
+            offline=args.offline,
+        )
         metrics = predict_match_outcomes(df)
         logger.info("Model metrics: %s", metrics)
         return
     else:
         pairs = parse_pairs(args.pairs)
-        df = batch_head_to_head(pairs, leagues=args.league, seasons=seasons, cache_dir=args.cache_dir, offline=args.offline)
+        df = batch_head_to_head(
+            pairs,
+            leagues=args.league,
+            seasons=seasons,
+            cache_dir=args.cache_dir,
+            db_path=args.db_path,
+            offline=args.offline,
+        )
         if args.export:
             export_path = export_results(df, args.export)
             logger.info("Exported data to %s", export_path)

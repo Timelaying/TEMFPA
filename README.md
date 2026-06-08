@@ -123,3 +123,17 @@ TEMFPA/
     ├── test_analytics.py
     └── test_retrieval.py
 ```
+
+## Frontend
+
+A responsive product landing page is available in [`frontend/`](frontend/). It is built with
+plain HTML, CSS, and JavaScript, so it does not require a separate package installation or
+build step.
+
+Run it locally from the repository root:
+
+```bash
+python -m http.server 8000 --directory frontend
+```
+
+Then open `http://localhost:8000` in a browser.

@@ -45,7 +45,7 @@
           <a href="#about">About</a>
         </nav>
 
-        <a class="button button-small button-ghost nav-action" href="#analysis">Launch app</a>
+        <a class="button button-small button-ghost nav-action" href="#team-selection">Launch app</a>
       </div>
     </header>
 
@@ -67,7 +67,7 @@
               comparisons, and smarter match predictions—all in one focused workspace.
             </p>
             <div class="hero-actions">
-              <a class="button button-primary" href="#platform">
+              <a class="button button-primary" href="#team-selection">
                 Start analysis
                 <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6" /></svg>
               </a>
@@ -185,6 +185,105 @@
           <div><strong data-count="380" data-suffix="+">380+</strong><span>Matches per season</span></div>
           <div><strong data-count="20">20</strong><span>Premier League teams</span></div>
           <div><strong data-count="3">3</strong><span>Prediction models</span></div>
+        </div>
+      </section>
+
+      <section class="team-selection section" id="team-selection" aria-labelledby="team-selection-title">
+        <div class="container selection-layout">
+          <div class="selection-copy reveal">
+            <p class="section-kicker">Build your analysis</p>
+            <h2 id="team-selection-title">Choose the teams. We’ll surface the story.</h2>
+            <p>
+              Select a league and season, then search for one team to review its form or
+              add a second team for a direct head-to-head comparison.
+            </p>
+            <div class="selection-note">
+              <span class="selection-note-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8m0-12.8L5.6 18.4" /></svg>
+              </span>
+              <div>
+                <strong>Flexible by design</strong>
+                <span>Team 2 is optional—analyse one side or compare a pair.</span>
+              </div>
+            </div>
+          </div>
+
+          <form class="selection-card reveal reveal-delay" data-analysis-form novalidate>
+            <div class="selection-card-header">
+              <div>
+                <span class="form-step">Analysis setup</span>
+                <h3>Select your teams</h3>
+              </div>
+              <span class="live-badge"><span></span> Ready</span>
+            </div>
+
+            <div class="selection-fields">
+              <label class="field-group">
+                <span class="field-label">League</span>
+                <span class="select-shell">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12v10H4zM7 2v3m6-3v3M4 8h12" /></svg>
+                  <select name="league" data-league-select aria-label="League">
+                    <option value="premier-league">Premier League</option>
+                    <option value="la-liga">La Liga</option>
+                    <option value="serie-a">Serie A</option>
+                    <option value="bundesliga">Bundesliga</option>
+                    <option value="ligue-1">Ligue 1</option>
+                  </select>
+                  <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+                </span>
+              </label>
+
+              <label class="field-group">
+                <span class="field-label">Season</span>
+                <span class="select-shell">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14v11H3zM6 3v3m8-3v3M3 9h14" /></svg>
+                  <select name="season" aria-label="Season">
+                    <option value="2023/24">2023/24</option>
+                    <option value="2022/23">2022/23</option>
+                    <option value="2021/22">2021/22</option>
+                    <option value="2020/21">2020/21</option>
+                    <option value="2019/20">2019/20</option>
+                  </select>
+                  <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+                </span>
+              </label>
+
+              <div class="field-group team-field">
+                <label class="field-label" for="team-one">Team 1 <span>Required</span></label>
+                <div class="combobox" data-team-combobox data-required="true">
+                  <div class="combobox-control">
+                    <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>
+                    <input id="team-one" name="teamOne" type="text" role="combobox" aria-autocomplete="list" aria-controls="team-one-options" aria-expanded="false" autocomplete="off" placeholder="Search for a team…" required />
+                    <button class="clear-team" type="button" aria-label="Clear Team 1 selection" hidden>×</button>
+                  </div>
+                  <ul class="team-options" id="team-one-options" role="listbox" hidden></ul>
+                </div>
+                <span class="field-error" data-field-error aria-live="polite"></span>
+              </div>
+
+              <div class="field-group team-field">
+                <label class="field-label" for="team-two">Team 2 <span class="optional-label">Optional</span></label>
+                <div class="combobox" data-team-combobox>
+                  <div class="combobox-control">
+                    <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>
+                    <input id="team-two" name="teamTwo" type="text" role="combobox" aria-autocomplete="list" aria-controls="team-two-options" aria-expanded="false" autocomplete="off" placeholder="Add another team…" />
+                    <button class="clear-team" type="button" aria-label="Clear Team 2 selection" hidden>×</button>
+                  </div>
+                  <ul class="team-options" id="team-two-options" role="listbox" hidden></ul>
+                </div>
+                <span class="field-error" data-field-error aria-live="polite"></span>
+              </div>
+            </div>
+
+            <button class="button analyse-button" type="submit">
+              <span class="analyse-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20"><path d="M3 16h14M5 13V9m5 4V4m5 9V7" /></svg>
+              </span>
+              Analyse teams
+              <svg class="button-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6" /></svg>
+            </button>
+            <p class="form-feedback" data-form-feedback aria-live="polite"></p>
+          </form>
         </div>
       </section>
 

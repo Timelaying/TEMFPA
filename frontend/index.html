@@ -40,6 +40,7 @@
 
         <nav class="primary-nav" id="primary-navigation" aria-label="Primary navigation" data-nav>
           <a href="#platform">Platform</a>
+          <a href="#team-dashboard">Dashboard</a>
           <a href="#insights">Insights</a>
           <a href="#how-it-works">How it works</a>
           <a href="#about">About</a>
@@ -284,6 +285,48 @@
             </button>
             <p class="form-feedback" data-form-feedback aria-live="polite"></p>
           </form>
+        </div>
+      </section>
+
+
+      <section class="team-dashboard section" id="team-dashboard" aria-labelledby="team-dashboard-title" data-team-dashboard hidden>
+        <div class="container">
+          <div class="section-heading dashboard-heading reveal visible">
+            <div>
+              <p class="section-kicker">Team performance dashboard</p>
+              <h2 id="team-dashboard-title" data-dashboard-title">Select a team to view historical performance.</h2>
+            </div>
+            <p data-dashboard-copy>
+              Submit the analysis form to see league positions, season extremes, match outcomes,
+              and goal trends for the selected team and season range.
+            </p>
+          </div>
+
+          <div class="dashboard-summary-grid" data-dashboard-summary aria-label="Team performance summary cards"></div>
+
+          <div class="dashboard-visual-grid">
+            <article class="performance-panel reveal visible">
+              <div class="performance-panel-header">
+                <div>
+                  <p class="panel-kicker">Historical trend</p>
+                  <h3>League position over seasons</h3>
+                </div>
+                <span class="chart-hint">Lower is better</span>
+              </div>
+              <div class="line-chart" data-position-chart role="img" aria-label="Line chart showing league position over seasons"></div>
+            </article>
+
+            <article class="performance-panel reveal visible">
+              <div class="performance-panel-header">
+                <div>
+                  <p class="panel-kicker">Results mix</p>
+                  <h3>Wins / draws / losses</h3>
+                </div>
+                <span class="chart-hint" data-results-total>0 matches</span>
+              </div>
+              <div class="bar-chart" data-results-chart role="img" aria-label="Bar chart for wins draws and losses"></div>
+            </article>
+          </div>
         </div>
       </section>
 

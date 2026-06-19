@@ -249,7 +249,141 @@ analysisForm?.addEventListener('submit', (event) => {
     leagueName: league,
     selectedSeason: season
   });
+
+  if (secondTeam) {
+    renderHeadToHead({
+      teamA: firstTeam,
+      teamB: secondTeam,
+      league: leagueSelect.value,
+      leagueName: league,
+      selectedSeason: season
+    });
+  } else {
+    hideHeadToHead();
+  }
 });
+
+
+const headToHeadMeetings = {
+  'premier-league': {
+    'Liverpool|Manchester City': [
+      { date: '2024-03-10', season: '2023/24', home: 'Liverpool', away: 'Manchester City', homeGoals: 1, awayGoals: 1 },
+      { date: '2023-11-25', season: '2023/24', home: 'Manchester City', away: 'Liverpool', homeGoals: 1, awayGoals: 1 },
+      { date: '2023-04-01', season: '2022/23', home: 'Manchester City', away: 'Liverpool', homeGoals: 4, awayGoals: 1 },
+      { date: '2022-10-16', season: '2022/23', home: 'Liverpool', away: 'Manchester City', homeGoals: 1, awayGoals: 0 },
+      { date: '2022-04-10', season: '2021/22', home: 'Manchester City', away: 'Liverpool', homeGoals: 2, awayGoals: 2 },
+      { date: '2021-10-03', season: '2021/22', home: 'Liverpool', away: 'Manchester City', homeGoals: 2, awayGoals: 2 },
+      { date: '2021-02-07', season: '2020/21', home: 'Liverpool', away: 'Manchester City', homeGoals: 1, awayGoals: 4 },
+      { date: '2020-11-08', season: '2020/21', home: 'Manchester City', away: 'Liverpool', homeGoals: 1, awayGoals: 1 },
+      { date: '2020-07-02', season: '2019/20', home: 'Manchester City', away: 'Liverpool', homeGoals: 4, awayGoals: 0 },
+      { date: '2019-11-10', season: '2019/20', home: 'Liverpool', away: 'Manchester City', homeGoals: 3, awayGoals: 1 }
+    ],
+    'Arsenal|Manchester City': [
+      { date: '2024-03-31', season: '2023/24', home: 'Manchester City', away: 'Arsenal', homeGoals: 0, awayGoals: 0 },
+      { date: '2023-10-08', season: '2023/24', home: 'Arsenal', away: 'Manchester City', homeGoals: 1, awayGoals: 0 },
+      { date: '2023-04-26', season: '2022/23', home: 'Manchester City', away: 'Arsenal', homeGoals: 4, awayGoals: 1 },
+      { date: '2023-02-15', season: '2022/23', home: 'Arsenal', away: 'Manchester City', homeGoals: 1, awayGoals: 3 },
+      { date: '2022-01-01', season: '2021/22', home: 'Arsenal', away: 'Manchester City', homeGoals: 1, awayGoals: 2 }
+    ]
+  }
+};
+
+const headToHead = document.querySelector('[data-head-to-head]');
+const h2hTitle = document.querySelector('[data-h2h-title]');
+const h2hCopy = document.querySelector('[data-h2h-copy]');
+const h2hMatchup = document.querySelector('[data-h2h-matchup]');
+const h2hSeason = document.querySelector('[data-h2h-season]');
+const h2hTeamA = document.querySelector('[data-h2h-team-a]');
+const h2hTeamB = document.querySelector('[data-h2h-team-b]');
+const h2hTeamAWins = document.querySelector('[data-h2h-team-a-wins]');
+const h2hTeamBWins = document.querySelector('[data-h2h-team-b-wins]');
+const h2hDraws = document.querySelector('[data-h2h-draws]');
+const h2hTotal = document.querySelector('[data-h2h-total]');
+const h2hGoalsA = document.querySelector('[data-h2h-goals-a]');
+const h2hGoalsB = document.querySelector('[data-h2h-goals-b]');
+const h2hBiggest = document.querySelector('[data-h2h-biggest]');
+const h2hChartTotal = document.querySelector('[data-h2h-chart-total]');
+const h2hChart = document.querySelector('[data-h2h-chart]');
+const h2hForm = document.querySelector('[data-h2h-form]');
+const h2hTable = document.querySelector('[data-h2h-table]');
+
+const pairKey = (teamA, teamB) => [teamA, teamB].sort().join('|');
+const seasonOrder = ['2019/20', '2020/21', '2021/22', '2022/23', '2023/24'];
+
+const buildFallbackMeetings = (teamA, teamB) => {
+  const seed = [...`${teamA}${teamB}`].reduce((total, char) => total + char.charCodeAt(0), 0);
+  return seasonOrder.flatMap((season, index) => [0, 1].map((leg) => {
+    const teamAHome = (index + leg) % 2 === 0;
+    const home = teamAHome ? teamA : teamB;
+    const away = teamAHome ? teamB : teamA;
+    const homeGoals = (seed + index + leg * 2) % 4;
+    const awayGoals = (seed + index * 2 + leg) % 3;
+    return { date: `${2020 + index}-${String(3 + leg * 7).padStart(2, '0')}-12`, season, home, away, homeGoals, awayGoals };
+  }));
+};
+
+const getHeadToHeadMeetings = (league, teamA, teamB) => headToHeadMeetings[league]?.[pairKey(teamA, teamB)] || buildFallbackMeetings(teamA, teamB);
+const getWinner = (meeting) => meeting.homeGoals === meeting.awayGoals ? 'Draw' : meeting.homeGoals > meeting.awayGoals ? meeting.home : meeting.away;
+const outcomeForTeam = (meeting, team) => {
+  const winner = getWinner(meeting);
+  if (winner === 'Draw') return 'D';
+  return winner === team ? 'W' : 'L';
+};
+const resultLabel = { W: 'win', D: 'draw', L: 'loss' };
+
+const hideHeadToHead = () => {
+  if (headToHead) headToHead.hidden = true;
+};
+
+const renderHeadToHead = ({ teamA, teamB, league, leagueName, selectedSeason }) => {
+  const selectedIndex = seasonOrder.indexOf(selectedSeason);
+  const seasons = seasonOrder.slice(0, selectedIndex + 1 || seasonOrder.length);
+  const meetings = getHeadToHeadMeetings(league, teamA, teamB).filter((meeting) => seasons.includes(meeting.season));
+  const orderedMeetings = [...meetings].sort((a, b) => b.date.localeCompare(a.date));
+  const stats = meetings.reduce((acc, meeting) => {
+    const winner = getWinner(meeting);
+    if (winner === teamA) acc.teamAWins += 1;
+    if (winner === teamB) acc.teamBWins += 1;
+    if (winner === 'Draw') acc.draws += 1;
+    acc.goalsA += meeting.home === teamA ? meeting.homeGoals : meeting.awayGoals;
+    acc.goalsB += meeting.home === teamB ? meeting.homeGoals : meeting.awayGoals;
+    const margin = Math.abs(meeting.homeGoals - meeting.awayGoals);
+    if (winner !== 'Draw' && margin > acc.biggest.margin) acc.biggest = { margin, meeting, winner };
+    return acc;
+  }, { teamAWins: 0, teamBWins: 0, draws: 0, goalsA: 0, goalsB: 0, biggest: { margin: 0 } });
+
+  headToHead.hidden = false;
+  h2hTitle.textContent = `${teamA} vs ${teamB}`;
+  h2hCopy.textContent = `${leagueName} head-to-head record across ${seasons[0]}–${seasons.at(-1)}.`;
+  h2hMatchup.textContent = `${teamA} vs ${teamB}`;
+  h2hSeason.textContent = `${seasons[0]}–${seasons.at(-1)}`;
+  h2hTeamA.textContent = teamA;
+  h2hTeamB.textContent = teamB;
+  h2hTeamAWins.textContent = stats.teamAWins;
+  h2hTeamBWins.textContent = stats.teamBWins;
+  h2hDraws.textContent = stats.draws;
+  h2hTotal.textContent = `${meetings.length} matches`;
+  h2hGoalsA.textContent = stats.goalsA;
+  h2hGoalsB.textContent = stats.goalsB;
+  h2hBiggest.textContent = stats.biggest.meeting
+    ? `Biggest win: ${stats.biggest.winner} ${stats.biggest.meeting.homeGoals}–${stats.biggest.meeting.awayGoals} (${stats.biggest.meeting.home} vs ${stats.biggest.meeting.away}, ${stats.biggest.meeting.season})`
+    : 'Biggest win: N/A';
+
+  h2hChartTotal.textContent = `${meetings.length} matches`;
+  h2hChart.innerHTML = [
+    [teamA, stats.teamAWins, 'team-a'],
+    ['Draws', stats.draws, 'draws'],
+    [teamB, stats.teamBWins, 'team-b']
+  ].map(([label, value, className]) => `<div class="h2h-outcome-row"><span>${label}</span><div><i class="${className}" style="width:${meetings.length ? (value / meetings.length) * 100 : 0}%"></i></div><strong>${value}</strong></div>`).join('');
+
+  h2hForm.innerHTML = [teamA, teamB].map((team) => `<div class="h2h-form-row"><span>${team}</span>${orderedMeetings.slice(0, 5).map((meeting) => {
+    const outcome = outcomeForTeam(meeting, team);
+    return `<i class="result ${resultLabel[outcome]}" title="${meeting.home} ${meeting.homeGoals}–${meeting.awayGoals} ${meeting.away}">${outcome}</i>`;
+  }).join('')}</div>`).join('');
+
+  h2hTable.innerHTML = orderedMeetings.slice(0, 5).map((meeting) => `<tr><td>${new Date(meeting.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td>${meeting.season}</td><td>${meeting.home} vs ${meeting.away}</td><td>${meeting.homeGoals}–${meeting.awayGoals}</td><td>${getWinner(meeting)}</td></tr>`).join('');
+  headToHead.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
 
 const seasonHistory = {
   'premier-league': {

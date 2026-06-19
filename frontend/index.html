@@ -41,6 +41,7 @@
         <nav class="primary-nav" id="primary-navigation" aria-label="Primary navigation" data-nav>
           <a href="#platform">Platform</a>
           <a href="#team-dashboard">Dashboard</a>
+          <a href="#head-to-head">Head-to-head</a>
           <a href="#insights">Insights</a>
           <a href="#how-it-works">How it works</a>
           <a href="#about">About</a>
@@ -325,6 +326,93 @@
                 <span class="chart-hint" data-results-total>0 matches</span>
               </div>
               <div class="bar-chart" data-results-chart role="img" aria-label="Bar chart for wins draws and losses"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="head-to-head section" id="head-to-head" aria-labelledby="head-to-head-title" data-head-to-head hidden>
+        <div class="container">
+          <div class="section-heading h2h-heading reveal visible">
+            <div>
+              <p class="section-kicker">Head-to-head comparison</p>
+              <h2 id="head-to-head-title" data-h2h-title>Compare two teams across selected seasons.</h2>
+            </div>
+            <p data-h2h-copy>
+              Add a second team in the analysis form to compare match totals, wins, draws, goals,
+              recent form, the last five meetings, and the biggest win in the matchup.
+            </p>
+          </div>
+
+          <div class="h2h-layout">
+            <article class="h2h-record-card reveal visible" aria-label="Head-to-head record card">
+              <div class="h2h-card-header">
+                <div>
+                  <p class="panel-kicker">Record card</p>
+                  <h3 data-h2h-matchup>Team A vs Team B</h3>
+                </div>
+                <span class="h2h-season" data-h2h-season>Selected seasons</span>
+              </div>
+              <div class="h2h-scoreline">
+                <div>
+                  <span data-h2h-team-a>Team A</span>
+                  <strong data-h2h-team-a-wins>0</strong>
+                  <small>Wins</small>
+                </div>
+                <div class="h2h-draws">
+                  <span>Draws</span>
+                  <strong data-h2h-draws>0</strong>
+                  <small data-h2h-total>0 matches</small>
+                </div>
+                <div>
+                  <span data-h2h-team-b>Team B</span>
+                  <strong data-h2h-team-b-wins>0</strong>
+                  <small>Wins</small>
+                </div>
+              </div>
+              <div class="h2h-goals">
+                <div><span data-h2h-goals-a>0</span><small>Goals by Team A</small></div>
+                <div><span data-h2h-goals-b>0</span><small>Goals by Team B</small></div>
+              </div>
+              <p class="h2h-biggest" data-h2h-biggest>Biggest win: N/A</p>
+            </article>
+
+            <article class="performance-panel h2h-chart-panel reveal visible">
+              <div class="performance-panel-header">
+                <div>
+                  <p class="panel-kicker">Outcome split</p>
+                  <h3>Wins / draws / losses</h3>
+                </div>
+                <span class="chart-hint" data-h2h-chart-total>0 matches</span>
+              </div>
+              <div class="h2h-bar-chart" data-h2h-chart role="img" aria-label="Bar chart comparing head-to-head outcomes"></div>
+            </article>
+          </div>
+
+          <div class="h2h-secondary-grid">
+            <article class="h2h-form-card reveal visible">
+              <div class="performance-panel-header">
+                <div>
+                  <p class="panel-kicker">Recent form comparison</p>
+                  <h3>Last five results</h3>
+                </div>
+              </div>
+              <div data-h2h-form></div>
+            </article>
+
+            <article class="h2h-table-card reveal visible">
+              <div class="performance-panel-header">
+                <div>
+                  <p class="panel-kicker">Match history</p>
+                  <h3>Last 5 meetings</h3>
+                </div>
+              </div>
+              <div class="match-table-wrap">
+                <table class="match-history-table">
+                  <thead><tr><th>Date</th><th>Season</th><th>Match</th><th>Score</th><th>Winner</th></tr></thead>
+                  <tbody data-h2h-table></tbody>
+                </table>
+              </div>
             </article>
           </div>
         </div>

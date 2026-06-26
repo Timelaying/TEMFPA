@@ -350,3 +350,33 @@ svg { display: block; }
   .h2h-form-row { grid-template-columns: 1fr repeat(5, 24px); gap: 5px; }
   .h2h-outcome-row { grid-template-columns: 78px 1fr 32px; }
 }
+
+/* Match prediction result */
+.match-prediction { background: linear-gradient(180deg, #f8fbf9 0%, #eef6f2 100%); }
+.match-prediction[hidden] { display: none; }
+.prediction-result-heading { margin-bottom: 30px; }
+.prediction-result-grid { display: grid; grid-template-columns: .82fr 1.18fr; gap: 18px; }
+.prediction-winner-card, .prediction-probability-card, .prediction-explanation-card { padding: 26px; background: #0b1d16; border: 1px solid rgba(105,240,174,.16); border-radius: 22px; box-shadow: 0 22px 55px rgba(6,31,21,.12); }
+.prediction-result-kicker { color: var(--green); font-size: 10px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+.prediction-winner-card strong { display: block; margin-top: 18px; color: #fff; font-size: clamp(36px, 5vw, 62px); line-height: .92; letter-spacing: -.055em; }
+.prediction-winner-card > span { width: fit-content; margin-top: 18px; padding: 8px 11px; display: inline-flex; color: #052519; background: var(--green); border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.prediction-winner-card p { margin: 18px 0 0; color: #9fb5ab; font-size: 13px; line-height: 1.65; }
+.prediction-probability-bars { display: grid; gap: 18px; margin-top: 22px; }
+.prediction-probability-row { display: grid; grid-template-columns: minmax(105px, 150px) 1fr 48px; gap: 13px; align-items: center; color: #c9d8d2; font-size: 12px; font-weight: 850; }
+.prediction-probability-row div { height: 22px; overflow: hidden; background: rgba(255,255,255,.08); border-radius: 999px; }
+.prediction-probability-row i { display: block; height: 100%; border-radius: inherit; }
+.prediction-probability-row i.team-a { background: var(--green); }
+.prediction-probability-row i.draw { background: #aebdb7; }
+.prediction-probability-row i.team-b { background: #a98af5; }
+.prediction-probability-row strong { color: #fff; text-align: right; }
+.prediction-explanation-card { margin-top: 18px; background: #fff; border-color: #d8e5df; }
+.prediction-explanation-card h3 { margin: 0; color: #0b3322; font-size: 22px; letter-spacing: -.025em; }
+.prediction-explanation-card p { margin: 18px 0 0; color: #29483b; font-size: 14px; line-height: 1.75; font-weight: 650; }
+
+@media (max-width: 980px) {
+  .prediction-result-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .prediction-winner-card, .prediction-probability-card, .prediction-explanation-card { padding: 18px; }
+  .prediction-probability-row { grid-template-columns: 82px 1fr 42px; gap: 8px; }
+}

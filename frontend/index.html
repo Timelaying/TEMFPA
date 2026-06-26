@@ -418,6 +418,52 @@
         </div>
       </section>
 
+      <section class="match-prediction section" id="match-prediction" aria-labelledby="match-prediction-title" data-match-prediction hidden>
+        <div class="container">
+          <div class="section-heading prediction-result-heading reveal visible">
+            <div>
+              <p class="section-kicker">Match prediction result</p>
+              <h2 id="match-prediction-title" data-prediction-title>Prediction will appear after team analysis.</h2>
+            </div>
+            <p data-prediction-copy>
+              Select two teams to receive a model-style result built from historical form,
+              scoring trends, defensive strength, and head-to-head context.
+            </p>
+          </div>
+
+          <div class="prediction-result-grid">
+            <article class="prediction-winner-card reveal visible" aria-label="Predicted winner and confidence">
+              <div class="prediction-result-kicker">Predicted winner</div>
+              <strong data-predicted-winner>Team A</strong>
+              <span data-confidence-level>Medium confidence</span>
+              <p data-prediction-summary>Submit a matchup to see the predicted outcome.</p>
+            </article>
+
+            <article class="prediction-probability-card reveal visible" aria-label="Outcome probabilities">
+              <div class="performance-panel-header">
+                <div>
+                  <p class="panel-kicker">Outcome probabilities</p>
+                  <h3 data-probability-heading>Team A / Draw / Team B</h3>
+                </div>
+                <span class="chart-hint" data-confidence-badge>Confidence</span>
+              </div>
+              <div class="prediction-probability-bars" data-prediction-bars></div>
+            </article>
+          </div>
+
+          <article class="prediction-explanation-card reveal visible">
+            <div class="performance-panel-header">
+              <div>
+                <p class="panel-kicker">Explanation</p>
+                <h3>Why TEMFPA made this prediction</h3>
+              </div>
+            </div>
+            <p data-prediction-explanation></p>
+          </article>
+        </div>
+      </section>
+
+
       <section class="features section" id="platform">
         <div class="container">
           <div class="section-heading reveal">

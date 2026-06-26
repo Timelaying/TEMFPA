@@ -258,8 +258,16 @@ analysisForm?.addEventListener('submit', (event) => {
       leagueName: league,
       selectedSeason: season
     });
+    renderMatchPrediction({
+      teamA: firstTeam,
+      teamB: secondTeam,
+      league: leagueSelect.value,
+      leagueName: league,
+      selectedSeason: season
+    });
   } else {
     hideHeadToHead();
+    hideMatchPrediction();
   }
 });
 
@@ -383,6 +391,95 @@ const renderHeadToHead = ({ teamA, teamB, league, leagueName, selectedSeason }) 
 
   h2hTable.innerHTML = orderedMeetings.slice(0, 5).map((meeting) => `<tr><td>${new Date(meeting.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td>${meeting.season}</td><td>${meeting.home} vs ${meeting.away}</td><td>${meeting.homeGoals}–${meeting.awayGoals}</td><td>${getWinner(meeting)}</td></tr>`).join('');
   headToHead.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+
+const matchPrediction = document.querySelector('[data-match-prediction]');
+const predictionTitle = document.querySelector('[data-prediction-title]');
+const predictionCopy = document.querySelector('[data-prediction-copy]');
+const predictedWinner = document.querySelector('[data-predicted-winner]');
+const confidenceLevel = document.querySelector('[data-confidence-level]');
+const predictionSummary = document.querySelector('[data-prediction-summary]');
+const probabilityHeading = document.querySelector('[data-probability-heading]');
+const confidenceBadge = document.querySelector('[data-confidence-badge]');
+const predictionBars = document.querySelector('[data-prediction-bars]');
+const predictionExplanation = document.querySelector('[data-prediction-explanation]');
+
+const hideMatchPrediction = () => {
+  if (matchPrediction) matchPrediction.hidden = true;
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const teamStrength = (league, team, selectedSeason) => {
+  const history = getTeamHistory(league, team);
+  const selectedIndex = seasonOrder.indexOf(selectedSeason);
+  const scopedHistory = selectedIndex >= 0 ? history.slice(0, selectedIndex + 1) : history;
+  const recentHistory = scopedHistory.slice(-3);
+  const latest = scopedHistory.at(-1);
+  const averagePosition = recentHistory.reduce((sum, item) => sum + item.position, 0) / recentHistory.length;
+  const goalDifference = recentHistory.reduce((sum, item) => sum + item.goalsFor - item.goalsAgainst, 0) / recentHistory.length;
+  const pointsPerMatch = recentHistory.reduce((sum, item) => sum + item.wins * 3 + item.draws, 0) / (recentHistory.length * 38);
+
+  return {
+    latest,
+    averagePosition,
+    goalDifference,
+    pointsPerMatch,
+    score: (21 - averagePosition) * 2.2 + goalDifference * 0.28 + pointsPerMatch * 24
+  };
+};
+
+const buildPrediction = ({ teamA, teamB, league, selectedSeason }) => {
+  const a = teamStrength(league, teamA, selectedSeason);
+  const b = teamStrength(league, teamB, selectedSeason);
+  const meetings = getHeadToHeadMeetings(league, teamA, teamB);
+  const selectedIndex = seasonOrder.indexOf(selectedSeason);
+  const seasons = selectedIndex >= 0 ? seasonOrder.slice(0, selectedIndex + 1) : seasonOrder;
+  const scopedMeetings = meetings.filter((meeting) => seasons.includes(meeting.season));
+  const h2hBalance = scopedMeetings.reduce((sum, meeting) => {
+    const winner = getWinner(meeting);
+    if (winner === teamA) return sum + 1.5;
+    if (winner === teamB) return sum - 1.5;
+    return sum;
+  }, 0);
+  const scoreDiff = a.score - b.score + h2hBalance;
+  const drawProbability = clamp(28 - Math.abs(scoreDiff) * 0.45, 16, 31);
+  const decisivePool = 100 - drawProbability;
+  const teamAProbability = clamp(decisivePool * (0.5 + scoreDiff / 90), 8, decisivePool - 8);
+  const teamBProbability = 100 - drawProbability - teamAProbability;
+  const probabilities = [
+    { label: teamA, value: Math.round(teamAProbability), className: 'team-a' },
+    { label: 'Draw', value: Math.round(drawProbability), className: 'draw' },
+    { label: teamB, value: Math.round(teamBProbability), className: 'team-b' }
+  ];
+  const leader = probabilities.reduce((best, item) => item.value > best.value ? item : best, probabilities[0]);
+  const sorted = [...probabilities].sort((left, right) => right.value - left.value);
+  const margin = sorted[0].value - sorted[1].value;
+  const confidence = margin >= 18 ? 'High' : margin >= 9 ? 'Medium' : 'Low';
+
+  return { a, b, scopedMeetings, probabilities, leader, confidence, margin };
+};
+
+const renderMatchPrediction = ({ teamA, teamB, league, leagueName, selectedSeason }) => {
+  const prediction = buildPrediction({ teamA, teamB, league, selectedSeason });
+
+  matchPrediction.hidden = false;
+  predictionTitle.textContent = `${teamA} vs ${teamB} prediction`;
+  predictionCopy.textContent = `${leagueName} prediction for ${selectedSeason}, based on backend-style analysis signals from recent performance, goals, and head-to-head records.`;
+  predictedWinner.textContent = prediction.leader.label === 'Draw' ? 'Draw' : prediction.leader.label;
+  confidenceLevel.textContent = `${prediction.confidence} confidence`;
+  confidenceBadge.textContent = `${prediction.confidence} confidence`;
+  predictionSummary.textContent = `${prediction.leader.label} is the most likely outcome at ${prediction.leader.value}%.`;
+  probabilityHeading.textContent = `${teamA} / Draw / ${teamB}`;
+  predictionBars.innerHTML = prediction.probabilities.map((item) => `
+    <div class="prediction-probability-row">
+      <span>${item.label}</span>
+      <div><i class="${item.className}" style="width:${item.value}%"></i></div>
+      <strong>${item.value}%</strong>
+    </div>
+  `).join('');
+  predictionExplanation.textContent = `${teamA} carries an average recent league position of ${prediction.a.averagePosition.toFixed(1)} and an average goal difference of ${prediction.a.goalDifference.toFixed(1)}, while ${teamB} posts ${prediction.b.averagePosition.toFixed(1)} and ${prediction.b.goalDifference.toFixed(1)}. The model also reviews ${prediction.scopedMeetings.length} head-to-head meetings in the selected range, then converts those signals into win and draw probabilities. A ${prediction.margin}-point gap between the top two outcomes produces a ${prediction.confidence.toLowerCase()} confidence level.`;
 };
 
 const seasonHistory = {

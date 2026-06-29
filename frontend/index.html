@@ -328,6 +328,63 @@
               <div class="bar-chart" data-results-chart role="img" aria-label="Bar chart for wins draws and losses"></div>
             </article>
           </div>
+
+          <section class="data-tables reveal visible" aria-labelledby="data-tables-title">
+            <div class="performance-panel data-table-card">
+              <div class="performance-panel-header data-table-heading">
+                <div>
+                  <p class="panel-kicker">Data tables</p>
+                  <h3 id="data-tables-title">Match results and league data</h3>
+                </div>
+                <span class="chart-hint">Sortable · Filterable · Paginated</span>
+              </div>
+
+              <div class="table-controls" role="search">
+                <label class="table-search">
+                  <span>Search team name</span>
+                  <input type="search" data-table-search placeholder="Search home or away team…" />
+                </label>
+                <label class="table-filter">
+                  <span>Result filter</span>
+                  <select data-table-filter>
+                    <option value="all">All results</option>
+                    <option value="wins">Decisive wins</option>
+                    <option value="draws">Draws only</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="responsive-table-wrap">
+                <table class="data-table" data-results-table>
+                  <caption>Match results and league standings for the selected team analysis.</caption>
+                  <thead>
+                    <tr>
+                      <th><button type="button" data-sort-key="season">Season</button></th>
+                      <th><button type="button" data-sort-key="date">Date</button></th>
+                      <th><button type="button" data-sort-key="home">Home team</button></th>
+                      <th><button type="button" data-sort-key="away">Away team</button></th>
+                      <th><button type="button" data-sort-key="homeGoals">Home score</button></th>
+                      <th><button type="button" data-sort-key="awayGoals">Away score</button></th>
+                      <th><button type="button" data-sort-key="winner">Winner</button></th>
+                      <th><button type="button" data-sort-key="leaguePosition">League position</button></th>
+                      <th><button type="button" data-sort-key="points">Points</button></th>
+                    </tr>
+                  </thead>
+                  <tbody data-results-table-body></tbody>
+                </table>
+              </div>
+
+              <div class="table-pagination">
+                <span data-table-count>0 results</span>
+                <div>
+                  <button class="button button-small button-ghost" type="button" data-page-prev>Previous</button>
+                  <span data-page-status>Page 1 of 1</span>
+                  <button class="button button-small button-ghost" type="button" data-page-next>Next</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
         </div>
       </section>
 

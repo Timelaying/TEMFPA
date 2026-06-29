@@ -390,6 +390,9 @@ const renderHeadToHead = ({ teamA, teamB, league, leagueName, selectedSeason }) 
   }).join('')}</div>`).join('');
 
   h2hTable.innerHTML = orderedMeetings.slice(0, 5).map((meeting) => `<tr><td>${new Date(meeting.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td>${meeting.season}</td><td>${meeting.home} vs ${meeting.away}</td><td>${meeting.homeGoals}–${meeting.awayGoals}</td><td>${getWinner(meeting)}</td></tr>`).join('');
+  tableRows = normalizeTableRows(orderedMeetings.map((meeting) => ({ ...meeting, winner: getWinner(meeting), leaguePosition: '—', points: '—' })));
+  tablePage = 1;
+  renderDataTable();
   headToHead.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
@@ -536,6 +539,103 @@ const resultsChart = document.querySelector('[data-results-chart]');
 const resultsTotal = document.querySelector('[data-results-total]');
 
 const getTeamHistory = (league, team) => seasonHistory[league]?.[team] || buildFallbackHistory(team);
+
+const tableSearch = document.querySelector('[data-table-search]');
+const tableFilter = document.querySelector('[data-table-filter]');
+const resultsTable = document.querySelector('[data-results-table]');
+const resultsTableBody = document.querySelector('[data-results-table-body]');
+const tableCount = document.querySelector('[data-table-count]');
+const pageStatus = document.querySelector('[data-page-status]');
+const pagePrev = document.querySelector('[data-page-prev]');
+const pageNext = document.querySelector('[data-page-next]');
+const tablePageSize = 5;
+let tableRows = [];
+let tablePage = 1;
+let tableSort = { key: 'date', direction: 'desc' };
+
+const pointsForSeason = ({ wins = 0, draws = 0 }) => wins * 3 + draws;
+
+const buildTeamMatchRows = ({ team, league, selectedSeason }) => {
+  const history = getTeamHistory(league, team);
+  const selectedIndex = seasonOrder.indexOf(selectedSeason);
+  const seasons = selectedIndex >= 0 ? seasonOrder.slice(0, selectedIndex + 1) : seasonOrder;
+  return seasons.flatMap((season, index) => {
+    const standings = history.find((item) => item.season === season) || history[index] || history.at(-1);
+    const opponents = (leagueTeams[league] || []).filter((candidate) => candidate !== team);
+    return opponents.slice(0, 2).map((opponent, leg) => {
+      const homeTeam = (index + leg) % 2 === 0 ? team : opponent;
+      const awayTeam = homeTeam === team ? opponent : team;
+      const homeGoals = homeTeam === team ? (standings.wins + index + leg) % 4 : (standings.losses + leg) % 3;
+      const awayGoals = awayTeam === team ? (standings.wins + leg) % 4 : (standings.draws + index) % 3;
+      return {
+        season,
+        date: `${2020 + index}-${String(8 + leg * 5).padStart(2, '0')}-18`,
+        home: homeTeam,
+        away: awayTeam,
+        homeGoals,
+        awayGoals,
+        winner: homeGoals === awayGoals ? 'Draw' : homeGoals > awayGoals ? homeTeam : awayTeam,
+        leaguePosition: standings.position,
+        points: pointsForSeason(standings)
+      };
+    });
+  });
+};
+
+const normalizeTableRows = (rows) => rows.map((row) => ({
+  ...row,
+  leaguePosition: row.leaguePosition ?? '—',
+  points: row.points ?? '—'
+}));
+
+const renderDataTable = () => {
+  if (!resultsTableBody) return;
+  const query = tableSearch?.value.trim().toLowerCase() || '';
+  const filter = tableFilter?.value || 'all';
+  const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+  const filtered = tableRows.filter((row) => {
+    const matchesTeam = !query || row.home.toLowerCase().includes(query) || row.away.toLowerCase().includes(query);
+    const matchesFilter = filter === 'all' || (filter === 'draws' ? row.winner === 'Draw' : row.winner !== 'Draw');
+    return matchesTeam && matchesFilter;
+  }).sort((a, b) => {
+    const result = collator.compare(String(a[tableSort.key]), String(b[tableSort.key]));
+    return tableSort.direction === 'asc' ? result : -result;
+  });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / tablePageSize));
+  tablePage = Math.min(tablePage, totalPages);
+  const pageRows = filtered.slice((tablePage - 1) * tablePageSize, tablePage * tablePageSize);
+  resultsTableBody.innerHTML = pageRows.map((row) => `
+    <tr>
+      <td data-label="Season">${row.season}</td>
+      <td data-label="Date">${new Date(row.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+      <td data-label="Home team">${row.home}</td>
+      <td data-label="Away team">${row.away}</td>
+      <td data-label="Home score">${row.homeGoals}</td>
+      <td data-label="Away score">${row.awayGoals}</td>
+      <td data-label="Winner">${row.winner}</td>
+      <td data-label="League position">${row.leaguePosition}</td>
+      <td data-label="Points">${row.points}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="9">No table rows match the current filters.</td></tr>';
+  tableCount.textContent = `${filtered.length} result${filtered.length === 1 ? '' : 's'}`;
+  pageStatus.textContent = `Page ${tablePage} of ${totalPages}`;
+  pagePrev.disabled = tablePage === 1;
+  pageNext.disabled = tablePage === totalPages;
+};
+
+resultsTable?.querySelectorAll('[data-sort-key]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const key = button.dataset.sortKey;
+    tableSort = { key, direction: tableSort.key === key && tableSort.direction === 'asc' ? 'desc' : 'asc' };
+    tablePage = 1;
+    renderDataTable();
+  });
+});
+tableSearch?.addEventListener('input', () => { tablePage = 1; renderDataTable(); });
+tableFilter?.addEventListener('change', () => { tablePage = 1; renderDataTable(); });
+pagePrev?.addEventListener('click', () => { tablePage -= 1; renderDataTable(); });
+pageNext?.addEventListener('click', () => { tablePage += 1; renderDataTable(); });
+
 const ordinal = (value) => `${value}${['th', 'st', 'nd', 'rd'][value % 100 > 10 && value % 100 < 14 ? 0 : value % 10] || 'th'}`;
 
 const renderSummaryCards = (metrics) => {
@@ -605,5 +705,8 @@ const renderTeamDashboard = ({ team, league, leagueName, selectedSeason }) => {
   ]);
   renderPositionChart(history);
   renderResultsChart(totals);
+  tableRows = normalizeTableRows(buildTeamMatchRows({ team, league, selectedSeason }));
+  tablePage = 1;
+  renderDataTable();
   dashboard.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };

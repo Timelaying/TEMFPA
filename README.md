@@ -10,6 +10,7 @@ TEMFPA is a Python toolkit for football data retrieval, head-to-head analysis, a
 - Baseline model benchmarking with logistic regression and random forest classifiers.
 - Batch processing for multiple team pairs.
 - CSV/XLSX export utilities and goals chart generation.
+- Frontend football analytics dashboard with Chart.js visualisations for league position, goals scored vs conceded, W/D/L mix, head-to-head outcomes, prediction probabilities, and recent form timelines.
 - File-based or SQLite-backed local caching with optional offline mode.
 - Command-line interface for all major workflows.
 

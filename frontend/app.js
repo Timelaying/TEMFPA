@@ -378,11 +378,24 @@ const renderHeadToHead = ({ teamA, teamB, league, leagueName, selectedSeason }) 
     : 'Biggest win: N/A';
 
   h2hChartTotal.textContent = `${meetings.length} matches`;
-  h2hChart.innerHTML = [
-    [teamA, stats.teamAWins, 'team-a'],
-    ['Draws', stats.draws, 'draws'],
-    [teamB, stats.teamBWins, 'team-b']
-  ].map(([label, value, className]) => `<div class="h2h-outcome-row"><span>${label}</span><div><i class="${className}" style="width:${meetings.length ? (value / meetings.length) * 100 : 0}%"></i></div><strong>${value}</strong></div>`).join('');
+  renderChart('h2h', h2hChart, {
+    type: 'doughnut',
+    data: {
+      labels: [teamA, 'Draws', teamB],
+      datasets: [{
+        data: [stats.teamAWins, stats.draws, stats.teamBWins],
+        backgroundColor: [chartPalette.green, chartPalette.grey, chartPalette.purple],
+        borderColor: '#0b1d16',
+        borderWidth: 4,
+        hoverOffset: 8
+      }]
+    },
+    options: baseChartOptions({
+      cutout: '62%',
+      scales: {},
+      plugins: { ...baseChartOptions().plugins, legend: { position: 'bottom', labels: { color: chartPalette.text, boxWidth: 11, usePointStyle: true } } }
+    })
+  });
 
   h2hForm.innerHTML = [teamA, teamB].map((team) => `<div class="h2h-form-row"><span>${team}</span>${orderedMeetings.slice(0, 5).map((meeting) => {
     const outcome = outcomeForTeam(meeting, team);
@@ -475,13 +488,26 @@ const renderMatchPrediction = ({ teamA, teamB, league, leagueName, selectedSeaso
   confidenceBadge.textContent = `${prediction.confidence} confidence`;
   predictionSummary.textContent = `${prediction.leader.label} is the most likely outcome at ${prediction.leader.value}%.`;
   probabilityHeading.textContent = `${teamA} / Draw / ${teamB}`;
-  predictionBars.innerHTML = prediction.probabilities.map((item) => `
-    <div class="prediction-probability-row">
-      <span>${item.label}</span>
-      <div><i class="${item.className}" style="width:${item.value}%"></i></div>
-      <strong>${item.value}%</strong>
-    </div>
-  `).join('');
+  renderChart('prediction', predictionBars, {
+    type: 'bar',
+    data: {
+      labels: prediction.probabilities.map((item) => item.label),
+      datasets: [{
+        label: 'Outcome probability',
+        data: prediction.probabilities.map((item) => item.value),
+        backgroundColor: [chartPalette.green, chartPalette.grey, chartPalette.purple],
+        borderRadius: 12,
+        borderSkipped: false
+      }]
+    },
+    options: baseChartOptions({
+      plugins: { ...baseChartOptions().plugins, legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: chartPalette.text, font: { weight: 800 } } },
+        y: { beginAtZero: true, max: 100, grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text, callback: (value) => `${value}%` } }
+      }
+    })
+  });
   predictionExplanation.textContent = `${teamA} carries an average recent league position of ${prediction.a.averagePosition.toFixed(1)} and an average goal difference of ${prediction.a.goalDifference.toFixed(1)}, while ${teamB} posts ${prediction.b.averagePosition.toFixed(1)} and ${prediction.b.goalDifference.toFixed(1)}. The model also reviews ${prediction.scopedMeetings.length} head-to-head meetings in the selected range, then converts those signals into win and draw probabilities. A ${prediction.margin}-point gap between the top two outcomes produces a ${prediction.confidence.toLowerCase()} confidence level.`;
 };
 
@@ -537,6 +563,9 @@ const dashboardSummary = document.querySelector('[data-dashboard-summary]');
 const positionChart = document.querySelector('[data-position-chart]');
 const resultsChart = document.querySelector('[data-results-chart]');
 const resultsTotal = document.querySelector('[data-results-total]');
+const goalsChart = document.querySelector('[data-goals-chart]');
+const goalsBalance = document.querySelector('[data-goals-balance]');
+const formChart = document.querySelector('[data-form-chart]');
 
 const getTeamHistory = (league, team) => seasonHistory[league]?.[team] || buildFallbackHistory(team);
 
@@ -636,6 +665,45 @@ tableFilter?.addEventListener('change', () => { tablePage = 1; renderDataTable()
 pagePrev?.addEventListener('click', () => { tablePage -= 1; renderDataTable(); });
 pageNext?.addEventListener('click', () => { tablePage += 1; renderDataTable(); });
 
+
+const chartInstances = new Map();
+const chartPalette = {
+  green: '#69f0ae',
+  greenDark: '#22d682',
+  purple: '#a98af5',
+  amber: '#ffb451',
+  grey: '#aebdb7',
+  red: '#ff7979',
+  grid: 'rgba(255,255,255,.08)',
+  text: '#9fb5ab'
+};
+
+const getCanvas = (container) => container?.querySelector('canvas');
+
+const renderChart = (key, container, config) => {
+  const canvas = getCanvas(container);
+  if (!canvas || !window.Chart) {
+    if (container) container.innerHTML = '<p class="chart-fallback">Chart library unavailable. Please refresh when online.</p>';
+    return;
+  }
+  chartInstances.get(key)?.destroy();
+  chartInstances.set(key, new Chart(canvas, config));
+};
+
+const baseChartOptions = (overrides = {}) => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: chartPalette.text, boxWidth: 11, boxHeight: 11, usePointStyle: true } },
+    tooltip: { backgroundColor: '#06130f', borderColor: 'rgba(105,240,174,.25)', borderWidth: 1, titleColor: '#fff', bodyColor: '#d6e2dd' }
+  },
+  scales: {
+    x: { grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text, font: { weight: 700 } } },
+    y: { grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text, font: { weight: 700 } } }
+  },
+  ...overrides
+});
+
 const ordinal = (value) => `${value}${['th', 'st', 'nd', 'rd'][value % 100 > 10 && value % 100 < 14 ? 0 : value % 10] || 'th'}`;
 
 const renderSummaryCards = (metrics) => {
@@ -648,31 +716,95 @@ const renderSummaryCards = (metrics) => {
 };
 
 const renderPositionChart = (history) => {
-  const width = 640;
-  const height = 250;
-  const padding = 34;
-  const maxPosition = Math.max(20, ...history.map((item) => item.position));
-  const points = history.map((item, index) => {
-    const x = padding + (index * (width - padding * 2)) / (history.length - 1 || 1);
-    const y = padding + ((item.position - 1) / (maxPosition - 1)) * (height - padding * 2);
-    return { ...item, x, y };
+  renderChart('position', positionChart, {
+    type: 'line',
+    data: {
+      labels: history.map((item) => item.season),
+      datasets: [{
+        label: 'League position',
+        data: history.map((item) => item.position),
+        borderColor: chartPalette.green,
+        backgroundColor: 'rgba(105,240,174,.16)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: '#0b1d16',
+        pointBorderColor: chartPalette.green,
+        pointBorderWidth: 3
+      }]
+    },
+    options: baseChartOptions({
+      scales: {
+        x: { grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text, font: { weight: 700 } } },
+        y: { reverse: true, min: 1, suggestedMax: 20, grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text, callback: (value) => ordinal(value), stepSize: 2 } }
+      }
+    })
   });
-  const path = points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
-  positionChart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" aria-hidden="true">
-    <g class="chart-grid">${[1, 5, 10, 15, 20].map((tick) => `<line x1="${padding}" x2="${width - padding}" y1="${padding + ((tick - 1) / (maxPosition - 1)) * (height - padding * 2)}" y2="${padding + ((tick - 1) / (maxPosition - 1)) * (height - padding * 2)}"></line><text x="4" y="${padding + ((tick - 1) / (maxPosition - 1)) * (height - padding * 2) + 4}">${ordinal(tick)}</text>`).join('')}</g>
-    <path class="position-line" d="${path}"></path>
-    ${points.map((point) => `<g class="position-point"><circle cx="${point.x}" cy="${point.y}" r="5"></circle><text x="${point.x}" y="${height - 7}">${point.season.slice(2)}</text><title>${point.season}: ${ordinal(point.position)}</title></g>`).join('')}
-  </svg>`;
 };
 
 const renderResultsChart = ({ wins, draws, losses }) => {
   const total = wins + draws + losses;
   resultsTotal.textContent = `${total} matches`;
-  resultsChart.innerHTML = [
-    ['Wins', wins, 'wins'],
-    ['Draws', draws, 'draws'],
-    ['Losses', losses, 'losses']
-  ].map(([label, value, className]) => `<div class="bar-row"><span>${label}</span><div><i class="${className}" style="width:${(value / total) * 100}%"></i></div><strong>${value}</strong></div>`).join('');
+  renderChart('results', resultsChart, {
+    type: 'bar',
+    data: {
+      labels: ['Wins', 'Draws', 'Losses'],
+      datasets: [{
+        label: 'Match outcomes',
+        data: [wins, draws, losses],
+        backgroundColor: [chartPalette.green, chartPalette.grey, chartPalette.red],
+        borderRadius: 12,
+        borderSkipped: false
+      }]
+    },
+    options: baseChartOptions({
+      indexAxis: 'y',
+      plugins: { ...baseChartOptions().plugins, legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text, precision: 0 } },
+        y: { grid: { display: false }, ticks: { color: chartPalette.text, font: { weight: 800 } } }
+      }
+    })
+  });
+};
+
+const renderGoalsChart = (history) => {
+  const goalsFor = history.reduce((sum, item) => sum + item.goalsFor, 0);
+  const goalsAgainst = history.reduce((sum, item) => sum + item.goalsAgainst, 0);
+  goalsBalance.textContent = `${goalsFor - goalsAgainst > 0 ? '+' : ''}${goalsFor - goalsAgainst} GD`;
+  renderChart('goals', goalsChart, {
+    type: 'bar',
+    data: {
+      labels: history.map((item) => item.season),
+      datasets: [
+        { label: 'Goals scored', data: history.map((item) => item.goalsFor), backgroundColor: chartPalette.green, borderRadius: 8 },
+        { label: 'Goals conceded', data: history.map((item) => item.goalsAgainst), backgroundColor: chartPalette.purple, borderRadius: 8 }
+      ]
+    },
+    options: baseChartOptions({ scales: { x: { grid: { display: false }, ticks: { color: chartPalette.text } }, y: { beginAtZero: true, grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text } } } })
+  });
+};
+
+const renderFormChart = (history) => {
+  const recent = history.slice(-5);
+  renderChart('form', formChart, {
+    type: 'line',
+    data: {
+      labels: recent.map((item) => item.season),
+      datasets: [{
+        label: 'Points',
+        data: recent.map(pointsForSeason),
+        borderColor: chartPalette.amber,
+        backgroundColor: 'rgba(255,180,81,.18)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 5,
+        pointBackgroundColor: chartPalette.amber
+      }]
+    },
+    options: baseChartOptions({ scales: { x: { grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text } }, y: { beginAtZero: true, suggestedMax: 100, grid: { color: chartPalette.grid }, ticks: { color: chartPalette.text } } } })
+  });
 };
 
 const renderTeamDashboard = ({ team, league, leagueName, selectedSeason }) => {
@@ -705,6 +837,8 @@ const renderTeamDashboard = ({ team, league, leagueName, selectedSeason }) => {
   ]);
   renderPositionChart(history);
   renderResultsChart(totals);
+  renderGoalsChart(history);
+  renderFormChart(history);
   tableRows = normalizeTableRows(buildTeamMatchRows({ team, league, selectedSeason }));
   tablePage = 1;
   renderDataTable();

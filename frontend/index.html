@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#06130f" />
     <title>TEMFPA — Football Prediction & Analysis</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -314,7 +315,7 @@
                 </div>
                 <span class="chart-hint">Lower is better</span>
               </div>
-              <div class="line-chart" data-position-chart role="img" aria-label="Line chart showing league position over seasons"></div>
+              <div class="analytics-chart" data-position-chart><canvas aria-label="Line chart showing league position over seasons" role="img"></canvas></div>
             </article>
 
             <article class="performance-panel reveal visible">
@@ -325,7 +326,31 @@
                 </div>
                 <span class="chart-hint" data-results-total>0 matches</span>
               </div>
-              <div class="bar-chart" data-results-chart role="img" aria-label="Bar chart for wins draws and losses"></div>
+              <div class="analytics-chart" data-results-chart><canvas aria-label="Bar chart for wins draws and losses" role="img"></canvas></div>
+            </article>
+          </div>
+
+          <div class="dashboard-visual-grid dashboard-visual-grid-secondary">
+            <article class="performance-panel reveal visible">
+              <div class="performance-panel-header">
+                <div>
+                  <p class="panel-kicker">Goal balance</p>
+                  <h3>Goals scored vs conceded</h3>
+                </div>
+                <span class="chart-hint" data-goals-balance>Goal difference</span>
+              </div>
+              <div class="analytics-chart" data-goals-chart><canvas aria-label="Grouped bar chart comparing goals scored and conceded by season" role="img"></canvas></div>
+            </article>
+
+            <article class="performance-panel reveal visible">
+              <div class="performance-panel-header">
+                <div>
+                  <p class="panel-kicker">Momentum</p>
+                  <h3>Recent form timeline</h3>
+                </div>
+                <span class="chart-hint">Latest five seasons</span>
+              </div>
+              <div class="analytics-chart" data-form-chart><canvas aria-label="Timeline chart showing recent form points per season" role="img"></canvas></div>
             </article>
           </div>
 
@@ -442,7 +467,7 @@
                 </div>
                 <span class="chart-hint" data-h2h-chart-total>0 matches</span>
               </div>
-              <div class="h2h-bar-chart" data-h2h-chart role="img" aria-label="Bar chart comparing head-to-head outcomes"></div>
+              <div class="analytics-chart h2h-donut-chart" data-h2h-chart><canvas aria-label="Doughnut chart comparing head-to-head outcomes" role="img"></canvas></div>
             </article>
           </div>
 
@@ -504,7 +529,7 @@
                 </div>
                 <span class="chart-hint" data-confidence-badge>Confidence</span>
               </div>
-              <div class="prediction-probability-bars" data-prediction-bars></div>
+              <div class="analytics-chart prediction-chart" data-prediction-bars><canvas aria-label="Probability chart for team win draw and opponent win" role="img"></canvas></div>
             </article>
           </div>
 

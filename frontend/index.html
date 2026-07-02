@@ -237,10 +237,25 @@
               </label>
 
               <label class="field-group">
-                <span class="field-label">Season</span>
+                <span class="field-label">Season range start</span>
                 <span class="select-shell">
                   <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14v11H3zM6 3v3m8-3v3M3 9h14" /></svg>
-                  <select name="season" aria-label="Season">
+                  <select name="seasonStart" data-season-start aria-label="Season range start">
+                    <option value="2019/20">2019/20</option>
+                    <option value="2020/21">2020/21</option>
+                    <option value="2021/22">2021/22</option>
+                    <option value="2022/23">2022/23</option>
+                    <option value="2023/24">2023/24</option>
+                  </select>
+                  <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+                </span>
+              </label>
+
+              <label class="field-group">
+                <span class="field-label">Season range end</span>
+                <span class="select-shell">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14v11H3zM6 3v3m8-3v3M3 9h14" /></svg>
+                  <select name="seasonEnd" data-season-end aria-label="Season range end">
                     <option value="2023/24">2023/24</option>
                     <option value="2022/23">2022/23</option>
                     <option value="2021/22">2021/22</option>
@@ -286,6 +301,7 @@
               <svg class="button-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6" /></svg>
             </button>
             <p class="form-feedback" data-form-feedback aria-live="polite"></p>
+            <p class="journey-helper">Next: view the dashboard, add a comparison team, generate a prediction, then export or save the result.</p>
           </form>
         </div>
       </section>
@@ -531,6 +547,13 @@
               </div>
               <div class="analytics-chart prediction-chart" data-prediction-bars><canvas aria-label="Probability chart for team win draw and opponent win" role="img"></canvas></div>
             </article>
+          </div>
+
+          <div class="prediction-actions reveal visible" aria-label="Prediction actions">
+            <button class="button button-primary" type="button" data-generate-prediction>Generate prediction</button>
+            <button class="button button-secondary" type="button" data-export-result>Export result</button>
+            <button class="button button-ghost" type="button" data-save-result>Save result</button>
+            <span data-save-status aria-live="polite"></span>
           </div>
 
           <article class="prediction-explanation-card reveal visible">

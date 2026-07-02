@@ -82,6 +82,8 @@ const leagueTeams = {
 
 const analysisForm = document.querySelector('[data-analysis-form]');
 const leagueSelect = document.querySelector('[data-league-select]');
+const seasonStartSelect = document.querySelector('[data-season-start]');
+const seasonEndSelect = document.querySelector('[data-season-end]');
 const teamComboboxes = [...document.querySelectorAll('[data-team-combobox]')];
 
 const getInitials = (team) => team
@@ -238,16 +240,19 @@ analysisForm?.addEventListener('submit', (event) => {
     return;
   }
 
-  const season = analysisForm.elements.season.value;
+  const seasonRange = getSelectedSeasonRange();
+  const selectedSeason = seasonRange.at(-1);
+  const rangeLabel = formatSeasonRange(seasonRange);
   const league = leagueSelect.options[leagueSelect.selectedIndex].text;
   feedback.textContent = secondTeam
-    ? `${firstTeam} vs ${secondTeam} is ready to analyse for ${season}.`
-    : `${firstTeam} is ready to analyse in the ${league}, ${season}.`;
+    ? `${firstTeam} vs ${secondTeam} is ready to analyse for ${rangeLabel}.`
+    : `${firstTeam} is ready to analyse in the ${league}, ${rangeLabel}.`;
   renderTeamDashboard({
     team: firstTeam,
     league: leagueSelect.value,
     leagueName: league,
-    selectedSeason: season
+    selectedSeason,
+    seasonRange
   });
 
   if (secondTeam) {
@@ -256,14 +261,16 @@ analysisForm?.addEventListener('submit', (event) => {
       teamB: secondTeam,
       league: leagueSelect.value,
       leagueName: league,
-      selectedSeason: season
+      selectedSeason,
+      seasonRange
     });
     renderMatchPrediction({
       teamA: firstTeam,
       teamB: secondTeam,
       league: leagueSelect.value,
       leagueName: league,
-      selectedSeason: season
+      selectedSeason,
+      seasonRange
     });
   } else {
     hideHeadToHead();
@@ -318,6 +325,17 @@ const h2hTable = document.querySelector('[data-h2h-table]');
 const pairKey = (teamA, teamB) => [teamA, teamB].sort().join('|');
 const seasonOrder = ['2019/20', '2020/21', '2021/22', '2022/23', '2023/24'];
 
+const getSelectedSeasonRange = () => {
+  const startIndex = seasonOrder.indexOf(seasonStartSelect?.value);
+  const endIndex = seasonOrder.indexOf(seasonEndSelect?.value);
+  const safeStart = startIndex >= 0 ? startIndex : 0;
+  const safeEnd = endIndex >= 0 ? endIndex : seasonOrder.length - 1;
+  const [from, to] = safeStart <= safeEnd ? [safeStart, safeEnd] : [safeEnd, safeStart];
+  return seasonOrder.slice(from, to + 1);
+};
+
+const formatSeasonRange = (seasons) => seasons.length === 1 ? seasons[0] : `${seasons[0]}–${seasons.at(-1)}`;
+
 const buildFallbackMeetings = (teamA, teamB) => {
   const seed = [...`${teamA}${teamB}`].reduce((total, char) => total + char.charCodeAt(0), 0);
   return seasonOrder.flatMap((season, index) => [0, 1].map((leg) => {
@@ -343,9 +361,8 @@ const hideHeadToHead = () => {
   if (headToHead) headToHead.hidden = true;
 };
 
-const renderHeadToHead = ({ teamA, teamB, league, leagueName, selectedSeason }) => {
-  const selectedIndex = seasonOrder.indexOf(selectedSeason);
-  const seasons = seasonOrder.slice(0, selectedIndex + 1 || seasonOrder.length);
+const renderHeadToHead = ({ teamA, teamB, league, leagueName, selectedSeason, seasonRange }) => {
+  const seasons = seasonRange?.length ? seasonRange : seasonOrder.slice(0, seasonOrder.indexOf(selectedSeason) + 1 || seasonOrder.length);
   const meetings = getHeadToHeadMeetings(league, teamA, teamB).filter((meeting) => seasons.includes(meeting.season));
   const orderedMeetings = [...meetings].sort((a, b) => b.date.localeCompare(a.date));
   const stats = meetings.reduce((acc, meeting) => {
@@ -425,12 +442,16 @@ const hideMatchPrediction = () => {
   if (matchPrediction) matchPrediction.hidden = true;
 };
 
+const predictionActionStatus = document.querySelector('[data-save-status]');
+const generatePredictionButton = document.querySelector('[data-generate-prediction]');
+const exportResultButton = document.querySelector('[data-export-result]');
+const saveResultButton = document.querySelector('[data-save-result]');
+
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-const teamStrength = (league, team, selectedSeason) => {
+const teamStrength = (league, team, selectedSeason, seasonRange) => {
   const history = getTeamHistory(league, team);
-  const selectedIndex = seasonOrder.indexOf(selectedSeason);
-  const scopedHistory = selectedIndex >= 0 ? history.slice(0, selectedIndex + 1) : history;
+  const scopedHistory = seasonRange?.length ? history.filter((item) => seasonRange.includes(item.season)) : history.slice(0, seasonOrder.indexOf(selectedSeason) + 1);
   const recentHistory = scopedHistory.slice(-3);
   const latest = scopedHistory.at(-1);
   const averagePosition = recentHistory.reduce((sum, item) => sum + item.position, 0) / recentHistory.length;
@@ -446,12 +467,11 @@ const teamStrength = (league, team, selectedSeason) => {
   };
 };
 
-const buildPrediction = ({ teamA, teamB, league, selectedSeason }) => {
-  const a = teamStrength(league, teamA, selectedSeason);
-  const b = teamStrength(league, teamB, selectedSeason);
+const buildPrediction = ({ teamA, teamB, league, selectedSeason, seasonRange }) => {
+  const a = teamStrength(league, teamA, selectedSeason, seasonRange);
+  const b = teamStrength(league, teamB, selectedSeason, seasonRange);
   const meetings = getHeadToHeadMeetings(league, teamA, teamB);
-  const selectedIndex = seasonOrder.indexOf(selectedSeason);
-  const seasons = selectedIndex >= 0 ? seasonOrder.slice(0, selectedIndex + 1) : seasonOrder;
+  const seasons = seasonRange?.length ? seasonRange : seasonOrder.slice(0, seasonOrder.indexOf(selectedSeason) + 1 || seasonOrder.length);
   const scopedMeetings = meetings.filter((meeting) => seasons.includes(meeting.season));
   const h2hBalance = scopedMeetings.reduce((sum, meeting) => {
     const winner = getWinner(meeting);
@@ -477,12 +497,15 @@ const buildPrediction = ({ teamA, teamB, league, selectedSeason }) => {
   return { a, b, scopedMeetings, probabilities, leader, confidence, margin };
 };
 
-const renderMatchPrediction = ({ teamA, teamB, league, leagueName, selectedSeason }) => {
-  const prediction = buildPrediction({ teamA, teamB, league, selectedSeason });
+let latestPredictionResult = null;
+
+const renderMatchPrediction = ({ teamA, teamB, league, leagueName, selectedSeason, seasonRange }) => {
+  const prediction = buildPrediction({ teamA, teamB, league, selectedSeason, seasonRange });
+  const rangeLabel = formatSeasonRange(seasonRange?.length ? seasonRange : [selectedSeason]);
 
   matchPrediction.hidden = false;
   predictionTitle.textContent = `${teamA} vs ${teamB} prediction`;
-  predictionCopy.textContent = `${leagueName} prediction for ${selectedSeason}, based on backend-style analysis signals from recent performance, goals, and head-to-head records.`;
+  predictionCopy.textContent = `${leagueName} prediction for ${rangeLabel}, based on backend-style analysis signals from recent performance, goals, and head-to-head records.`;
   predictedWinner.textContent = prediction.leader.label === 'Draw' ? 'Draw' : prediction.leader.label;
   confidenceLevel.textContent = `${prediction.confidence} confidence`;
   confidenceBadge.textContent = `${prediction.confidence} confidence`;
@@ -508,8 +531,53 @@ const renderMatchPrediction = ({ teamA, teamB, league, leagueName, selectedSeaso
       }
     })
   });
+  latestPredictionResult = { teamA, teamB, leagueName, seasonRange: rangeLabel, winner: prediction.leader.label, confidence: prediction.confidence, probabilities: prediction.probabilities };
   predictionExplanation.textContent = `${teamA} carries an average recent league position of ${prediction.a.averagePosition.toFixed(1)} and an average goal difference of ${prediction.a.goalDifference.toFixed(1)}, while ${teamB} posts ${prediction.b.averagePosition.toFixed(1)} and ${prediction.b.goalDifference.toFixed(1)}. The model also reviews ${prediction.scopedMeetings.length} head-to-head meetings in the selected range, then converts those signals into win and draw probabilities. A ${prediction.margin}-point gap between the top two outcomes produces a ${prediction.confidence.toLowerCase()} confidence level.`;
 };
+
+const getPredictionPayload = () => latestPredictionResult ? {
+  ...latestPredictionResult,
+  generatedAt: new Date().toISOString()
+} : null;
+
+const setPredictionActionStatus = (message) => {
+  if (predictionActionStatus) predictionActionStatus.textContent = message;
+};
+
+generatePredictionButton?.addEventListener('click', () => {
+  if (!latestPredictionResult) {
+    setPredictionActionStatus('Choose two teams first.');
+    return;
+  }
+  setPredictionActionStatus('Prediction generated from the latest comparison.');
+  predictionExplanation?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+exportResultButton?.addEventListener('click', () => {
+  const payload = getPredictionPayload();
+  if (!payload) {
+    setPredictionActionStatus('Choose two teams before exporting.');
+    return;
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `temfpa-${payload.teamA}-vs-${payload.teamB}-${payload.seasonRange}.json`.replace(/[^a-z0-9.]+/gi, '-').toLowerCase();
+  link.click();
+  URL.revokeObjectURL(url);
+  setPredictionActionStatus('Result exported as JSON.');
+});
+
+saveResultButton?.addEventListener('click', () => {
+  const payload = getPredictionPayload();
+  if (!payload) {
+    setPredictionActionStatus('Choose two teams before saving.');
+    return;
+  }
+  localStorage.setItem('temfpa:lastPrediction', JSON.stringify(payload));
+  setPredictionActionStatus('Result saved in this browser.');
+});
 
 const seasonHistory = {
   'premier-league': {
@@ -584,10 +652,9 @@ let tableSort = { key: 'date', direction: 'desc' };
 
 const pointsForSeason = ({ wins = 0, draws = 0 }) => wins * 3 + draws;
 
-const buildTeamMatchRows = ({ team, league, selectedSeason }) => {
+const buildTeamMatchRows = ({ team, league, selectedSeason, seasonRange }) => {
   const history = getTeamHistory(league, team);
-  const selectedIndex = seasonOrder.indexOf(selectedSeason);
-  const seasons = selectedIndex >= 0 ? seasonOrder.slice(0, selectedIndex + 1) : seasonOrder;
+  const seasons = seasonRange?.length ? seasonRange : seasonOrder.slice(0, seasonOrder.indexOf(selectedSeason) + 1 || seasonOrder.length);
   return seasons.flatMap((season, index) => {
     const standings = history.find((item) => item.season === season) || history[index] || history.at(-1);
     const opponents = (leagueTeams[league] || []).filter((candidate) => candidate !== team);
@@ -807,8 +874,9 @@ const renderFormChart = (history) => {
   });
 };
 
-const renderTeamDashboard = ({ team, league, leagueName, selectedSeason }) => {
-  const history = getTeamHistory(league, team);
+const renderTeamDashboard = ({ team, league, leagueName, selectedSeason, seasonRange }) => {
+  const fullHistory = getTeamHistory(league, team);
+  const history = seasonRange?.length ? fullHistory.filter((item) => seasonRange.includes(item.season)) : fullHistory;
   const selected = history.find((item) => item.season === selectedSeason) || history.at(-1);
   const previous = history[history.indexOf(selected) - 1];
   const best = history.reduce((bestItem, item) => item.position < bestItem.position ? item : bestItem, history[0]);
@@ -824,7 +892,7 @@ const renderTeamDashboard = ({ team, league, leagueName, selectedSeason }) => {
 
   dashboard.hidden = false;
   dashboardTitle.textContent = `${team} historical performance`;
-  dashboardCopy.textContent = `${leagueName} dashboard for ${selectedSeason}, benchmarked against ${history[0].season}–${history.at(-1).season}.`;
+  dashboardCopy.textContent = `${leagueName} dashboard for ${formatSeasonRange(history.map((item) => item.season))}, benchmarked across the selected season range.`;
   renderSummaryCards([
     { label: 'Selected season position', value: ordinal(selected.position), detail: selected.season },
     { label: 'Previous season position', value: previous ? ordinal(previous.position) : 'N/A', detail: previous?.season || 'No earlier season' },
@@ -839,7 +907,7 @@ const renderTeamDashboard = ({ team, league, leagueName, selectedSeason }) => {
   renderResultsChart(totals);
   renderGoalsChart(history);
   renderFormChart(history);
-  tableRows = normalizeTableRows(buildTeamMatchRows({ team, league, selectedSeason }));
+  tableRows = normalizeTableRows(buildTeamMatchRows({ team, league, selectedSeason, seasonRange }));
   tablePage = 1;
   renderDataTable();
   dashboard.scrollIntoView({ behavior: 'smooth', block: 'start' });

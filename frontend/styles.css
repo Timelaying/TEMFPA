@@ -428,3 +428,10 @@ svg { display: block; }
 @media (max-width: 620px) {
   .analytics-chart, .h2h-donut-chart, .prediction-chart { min-height: 240px; height: 240px; }
 }
+
+/* Guided journey and result actions */
+.journey-helper { margin: 12px 0 -4px; color: #60766d; text-align: center; font-size: 11px; line-height: 1.5; }
+.prediction-actions { margin: 20px 0 0; padding: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #fff; border: 1px solid #d8e5df; border-radius: 18px; box-shadow: 0 16px 38px rgba(6,31,21,.07); }
+.prediction-actions .button { min-height: 42px; }
+.prediction-actions [data-save-status] { color: var(--green-dark); font-size: 12px; font-weight: 800; }
+@media (max-width: 620px) { .prediction-actions .button { width: 100%; justify-content: center; } }

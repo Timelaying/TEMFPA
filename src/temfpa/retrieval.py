@@ -16,13 +16,50 @@ import soccerdata as sd
 
 logger = logging.getLogger(__name__)
 
-if not hasattr(sd, "FotMob"):
-    class _FotMobUnavailable:
-        def __init__(self, *args, **kwargs):
-            msg = "soccerdata.FotMob is not available in this installed soccerdata version."
-            raise RuntimeError(msg)
 
-    sd.FotMob = _FotMobUnavailable
+def _parse_fbref_schedule(df: pd.DataFrame) -> pd.DataFrame:
+    """Add home_score and away_score columns by parsing FBref's 'score' column (e.g. '0–3')."""
+    df = df.copy()
+    scores = df["score"].str.split("\u2013", expand=True)
+    df["home_score"] = pd.to_numeric(scores[0], errors="coerce")
+    df["away_score"] = pd.to_numeric(scores[1], errors="coerce")
+    return df
+
+
+def _compute_standings(schedule: pd.DataFrame) -> pd.DataFrame:
+    """Derive a league standings table from a parsed FBref schedule DataFrame."""
+    teams: dict[str, dict] = {}
+    for _, row in schedule.iterrows():
+        if pd.isna(row.get("home_score")) or pd.isna(row.get("away_score")):
+            continue
+        home = row["home_team"]
+        away = row["away_team"]
+        hs, as_ = int(row["home_score"]), int(row["away_score"])
+        for team in (home, away):
+            if team not in teams:
+                teams[team] = {"team": team, "MP": 0, "W": 0, "D": 0, "L": 0, "GF": 0, "GA": 0, "Pts": 0}
+        teams[home]["MP"] += 1
+        teams[away]["MP"] += 1
+        teams[home]["GF"] += hs
+        teams[home]["GA"] += as_
+        teams[away]["GF"] += as_
+        teams[away]["GA"] += hs
+        if hs > as_:
+            teams[home]["W"] += 1
+            teams[home]["Pts"] += 3
+            teams[away]["L"] += 1
+        elif hs < as_:
+            teams[away]["W"] += 1
+            teams[away]["Pts"] += 3
+            teams[home]["L"] += 1
+        else:
+            teams[home]["D"] += 1
+            teams[away]["D"] += 1
+            teams[home]["Pts"] += 1
+            teams[away]["Pts"] += 1
+    df = pd.DataFrame(list(teams.values()))
+    df = df.sort_values(["Pts", "GF"], ascending=False).reset_index(drop=True)
+    return df
 
 
 class DataCache:
@@ -159,16 +196,17 @@ def get_team_position(
 
     for season in seasons:
         try:
-            league_table = _get_or_fetch(
+            schedule = _get_or_fetch(
                 cache=cache,
-                category="league_table",
+                category="schedule",
                 league=leagues,
                 season=season,
-                fetcher=lambda: sd.FotMob(leagues=leagues, seasons=season)
-                .read_league_table()
-                .reset_index(drop=True),
+                fetcher=lambda: _parse_fbref_schedule(
+                    sd.FBref(leagues=leagues, seasons=season).read_schedule().reset_index()
+                ),
                 offline=offline,
             )
+            league_table = _compute_standings(schedule)
         except Exception as exc:  # noqa: BLE001
             logger.exception(
                 "Failed to fetch league table for league=%s season=%s: %s",
@@ -226,9 +264,9 @@ def get_match_results(
                 category="schedule",
                 league=leagues,
                 season=season,
-                fetcher=lambda: sd.FotMob(
-                    leagues=leagues, seasons=season
-                ).read_schedule(),
+                fetcher=lambda: _parse_fbref_schedule(
+                    sd.FBref(leagues=leagues, seasons=season).read_schedule().reset_index()
+                ),
                 offline=offline,
             )
         except Exception as exc:  # noqa: BLE001

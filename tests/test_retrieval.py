@@ -4,56 +4,34 @@ import pytest
 from temfpa.retrieval import DataCache, get_match_results, get_team_position
 
 
-LEAGUE_TABLES = {
-    ("ENG-Premier League", "2023/2024"): pd.DataFrame(
-        {
-            "team": ["Manchester City", "Liverpool", "Arsenal"],
-            "points": [91, 82, 80],
-        }
-    ),
-    ("ENG-Premier League", "2022/2023"): pd.DataFrame(
-        {
-            "team": ["Arsenal", "Manchester City", "Liverpool"],
-            "points": [89, 88, 75],
-        }
-    ),
-    ("ESP-La Liga", "2023/2024"): pd.DataFrame(
-        {
-            "team": ["Real Madrid", "Barcelona", "Girona"],
-            "points": [95, 85, 81],
-        }
-    ),
-}
-
+# FBref-format schedules: scores use en-dash (–), no pre-split home_score/away_score.
+# 2023/2024: Man City W1 D1 (4 pts) → position 1; 2022/2023: Arsenal W2 (6 pts) > Man City W1 (3 pts) → Man City position 2.
 SCHEDULES = {
     ("ENG-Premier League", "2023/2024"): pd.DataFrame(
         {
             "home_team": ["Manchester City", "Liverpool", "Arsenal"],
             "away_team": ["Liverpool", "Manchester City", "Chelsea"],
-            "home_score": [2, 1, 0],
-            "away_score": [1, 1, 2],
+            "score": ["2\u20131", "1\u20131", "0\u20132"],
         }
     ),
     ("ENG-Premier League", "2022/2023"): pd.DataFrame(
         {
-            "home_team": ["Liverpool", "Manchester City"],
-            "away_team": ["Manchester City", "Liverpool"],
-            "home_score": [pd.NA, 4],
-            "away_score": [pd.NA, 1],
+            "home_team": ["Arsenal", "Arsenal", "Liverpool", "Manchester City"],
+            "away_team": ["Liverpool", "Chelsea", "Manchester City", "Liverpool"],
+            "score": ["3\u20130", "2\u20130", pd.NA, "4\u20131"],
         }
     ),
     ("ESP-La Liga", "2023/2024"): pd.DataFrame(
         {
             "home_team": ["Real Madrid", "Barcelona"],
             "away_team": ["Barcelona", "Real Madrid"],
-            "home_score": [3, 1],
-            "away_score": [2, 2],
+            "score": ["3\u20132", "1\u20132"],
         }
     ),
 }
 
 
-class FakeFotMob:
+class FakeFBref:
     calls: list[tuple[str, str]] = []
 
     def __init__(self, leagues, seasons):
@@ -61,17 +39,14 @@ class FakeFotMob:
         self.seasons = seasons
         self.calls.append((leagues, seasons))
 
-    def read_league_table(self):
-        return LEAGUE_TABLES[(self.leagues, self.seasons)].copy()
-
     def read_schedule(self):
         return SCHEDULES[(self.leagues, self.seasons)].copy()
 
 
 @pytest.fixture(autouse=True)
-def patch_fotmob(monkeypatch):
-    FakeFotMob.calls = []
-    monkeypatch.setattr("temfpa.retrieval.sd.FotMob", FakeFotMob)
+def patch_fbref(monkeypatch):
+    FakeFBref.calls = []
+    monkeypatch.setattr("temfpa.retrieval.sd.FBref", FakeFBref)
 
 
 @pytest.fixture
@@ -90,7 +65,7 @@ def test_get_team_position_combines_multiple_seasons_with_positions(cache_dir):
     assert list(df["team"]) == ["Manchester City", "Manchester City"]
     assert list(df["position"]) == [1, 2]
     assert list(df["season"]) == ["2023/2024", "2022/2023"]
-    assert FakeFotMob.calls == [
+    assert FakeFBref.calls == [
         ("ENG-Premier League", "2023/2024"),
         ("ENG-Premier League", "2022/2023"),
     ]
@@ -111,17 +86,13 @@ def test_get_team_position_handles_different_leagues_and_missing_team(
     if expected_team is None:
         assert df.empty
         assert "season" in df.columns
-        assert FakeFotMob.calls == [(league, "2023/2024")]
+        assert FakeFBref.calls == [(league, "2023/2024")]
         return
 
-    assert df.to_dict("records") == [
-        {
-            "team": expected_team,
-            "points": 95,
-            "position": expected_position,
-            "season": "2023/2024",
-        }
-    ]
+    assert len(df) == 1
+    assert df.iloc[0]["team"] == expected_team
+    assert df.iloc[0]["position"] == expected_position
+    assert df.iloc[0]["season"] == "2023/2024"
 
 
 def test_get_match_results_combines_seasons_and_tracks_winner_states(cache_dir):
@@ -138,7 +109,7 @@ def test_get_match_results_combines_seasons_and_tracks_winner_states(cache_dir):
     assert list(df["winner"][:2]) == ["Manchester City", "Draw"]
     assert pd.isna(df.loc[2, "winner"])
     assert df.loc[3, "winner"] == "Manchester City"
-    assert FakeFotMob.calls == [
+    assert FakeFBref.calls == [
         ("ENG-Premier League", "2023/2024"),
         ("ENG-Premier League", "2022/2023"),
     ]
@@ -154,15 +125,10 @@ def test_get_match_results_returns_empty_dataframe_when_no_fixture_exists(cache_
     )
 
     assert df.empty
-    assert FakeFotMob.calls == [("ESP-La Liga", "2023/2024")]
+    assert FakeFBref.calls == [("ESP-La Liga", "2023/2024")]
 
 
-class ErrorFotMob(FakeFotMob):
-    def read_league_table(self):
-        if self.seasons == "2022/2023":
-            raise RuntimeError("network failure")
-        return super().read_league_table()
-
+class ErrorFBref(FakeFBref):
     def read_schedule(self):
         if self.seasons == "2022/2023":
             raise RuntimeError("network failure")
@@ -170,8 +136,8 @@ class ErrorFotMob(FakeFotMob):
 
 
 def test_get_team_position_skips_season_when_fetch_fails(monkeypatch, cache_dir):
-    FakeFotMob.calls = []
-    monkeypatch.setattr("temfpa.retrieval.sd.FotMob", ErrorFotMob)
+    FakeFBref.calls = []
+    monkeypatch.setattr("temfpa.retrieval.sd.FBref", ErrorFBref)
 
     df = get_team_position(
         "Manchester City",
@@ -182,15 +148,15 @@ def test_get_team_position_skips_season_when_fetch_fails(monkeypatch, cache_dir)
 
     assert list(df["team"]) == ["Manchester City"]
     assert list(df["season"]) == ["2023/2024"]
-    assert FakeFotMob.calls == [
+    assert FakeFBref.calls == [
         ("ENG-Premier League", "2023/2024"),
         ("ENG-Premier League", "2022/2023"),
     ]
 
 
 def test_get_match_results_skips_season_when_fetch_fails(monkeypatch, cache_dir):
-    FakeFotMob.calls = []
-    monkeypatch.setattr("temfpa.retrieval.sd.FotMob", ErrorFotMob)
+    FakeFBref.calls = []
+    monkeypatch.setattr("temfpa.retrieval.sd.FBref", ErrorFBref)
 
     df = get_match_results(
         "Manchester City",
@@ -202,7 +168,7 @@ def test_get_match_results_skips_season_when_fetch_fails(monkeypatch, cache_dir)
 
     assert len(df) == 2
     assert list(df["season"]) == ["2023/2024", "2023/2024"]
-    assert FakeFotMob.calls == [
+    assert FakeFBref.calls == [
         ("ENG-Premier League", "2023/2024"),
         ("ENG-Premier League", "2022/2023"),
     ]
@@ -216,9 +182,9 @@ def test_cache_is_reused_for_positions(cache_dir):
         cache_dir=cache_dir,
     )
     assert len(first) == 1
-    assert FakeFotMob.calls == [("ENG-Premier League", "2023/2024")]
+    assert FakeFBref.calls == [("ENG-Premier League", "2023/2024")]
 
-    FakeFotMob.calls = []
+    FakeFBref.calls = []
     second = get_team_position(
         "Manchester City",
         leagues="ENG-Premier League",
@@ -227,7 +193,7 @@ def test_cache_is_reused_for_positions(cache_dir):
     )
 
     assert len(second) == 1
-    assert FakeFotMob.calls == []
+    assert FakeFBref.calls == []
 
 
 def test_offline_mode_reads_cached_schedule_without_network(cache_dir):
@@ -240,7 +206,7 @@ def test_offline_mode_reads_cached_schedule_without_network(cache_dir):
     )
     assert len(online) == 2
 
-    FakeFotMob.calls = []
+    FakeFBref.calls = []
     offline = get_match_results(
         "Manchester City",
         "Liverpool",
@@ -251,7 +217,7 @@ def test_offline_mode_reads_cached_schedule_without_network(cache_dir):
     )
 
     assert len(offline) == 2
-    assert FakeFotMob.calls == []
+    assert FakeFBref.calls == []
 
 
 def test_offline_mode_without_cache_returns_empty_data(cache_dir):
@@ -264,7 +230,7 @@ def test_offline_mode_without_cache_returns_empty_data(cache_dir):
     )
 
     assert df.empty
-    assert FakeFotMob.calls == []
+    assert FakeFBref.calls == []
 
 
 def test_sqlite_cache_is_reused_for_positions(tmp_path):
@@ -277,9 +243,9 @@ def test_sqlite_cache_is_reused_for_positions(tmp_path):
         db_path=db_path,
     )
     assert len(first) == 1
-    assert FakeFotMob.calls == [("ENG-Premier League", "2023/2024")]
+    assert FakeFBref.calls == [("ENG-Premier League", "2023/2024")]
 
-    FakeFotMob.calls = []
+    FakeFBref.calls = []
     second = get_team_position(
         "Manchester City",
         leagues="ENG-Premier League",
@@ -289,7 +255,7 @@ def test_sqlite_cache_is_reused_for_positions(tmp_path):
     )
 
     assert len(second) == 1
-    assert FakeFotMob.calls == []
+    assert FakeFBref.calls == []
     assert db_path.exists()
 
 

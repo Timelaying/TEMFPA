@@ -16,6 +16,14 @@ import soccerdata as sd
 
 logger = logging.getLogger(__name__)
 
+if not hasattr(sd, "FotMob"):
+    class _FotMobUnavailable:
+        def __init__(self, *args, **kwargs):
+            msg = "soccerdata.FotMob is not available in this installed soccerdata version."
+            raise RuntimeError(msg)
+
+    sd.FotMob = _FotMobUnavailable
+
 
 class DataCache:
     """Cache FotMob tables and schedules using files or a SQLite database."""

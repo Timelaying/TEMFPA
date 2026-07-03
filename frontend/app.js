@@ -912,3 +912,249 @@ const renderTeamDashboard = ({ team, league, leagueName, selectedSeason, seasonR
   renderDataTable();
   dashboard.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
+
+// =============================================================================
+// V.2 Integration — dynamic module loading to avoid ES module conflicts
+// =============================================================================
+
+(function initV2() {
+  const v2Panel = document.getElementById('v2-panel');
+  const v2Toggle = document.getElementById('v2-toggle');
+
+  if (!v2Toggle || !v2Panel) return;
+
+  // Toggle V.2 panel visibility
+  v2Toggle.addEventListener('click', () => {
+    const isHidden = v2Panel.style.display === 'none' || !v2Panel.style.display;
+    v2Panel.style.display = isHidden ? 'block' : 'none';
+    v2Toggle.textContent = isHidden ? 'Hide V.2 Prediction Panel' : 'Switch to V.2 Prediction';
+    if (isHidden) {
+      v2Panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      loadV2Modules();
+    }
+  });
+
+  let v2Loaded = false;
+  let v2Api, v2RenderPredictionCard, v2RenderScorelines, v2RenderFormationImpact,
+      v2RenderPlayerImpact, v2RenderError;
+
+  function loadV2Modules() {
+    if (v2Loaded) return;
+    v2Loaded = true;
+
+    Promise.all([
+      import('./v2/api.js'),
+      import('./v2/prediction-card.js'),
+      import('./v2/scorelines.js'),
+      import('./v2/formation-impact.js'),
+      import('./v2/player-impact.js'),
+      import('./v2/error-state.js'),
+    ]).then(([apiMod, cardMod, slMod, formMod, playerMod, errorMod]) => {
+      v2Api = apiMod;
+      v2RenderPredictionCard = cardMod.renderPredictionCard;
+      v2RenderScorelines = slMod.renderScorelines;
+      v2RenderFormationImpact = formMod.renderFormationImpact;
+      v2RenderPlayerImpact = playerMod.renderPlayerImpact;
+      v2RenderError = errorMod.renderError;
+
+      // Populate league select
+      populateLeagueSelect();
+
+      // Wire form submit
+      const form = document.getElementById('v2-predict-form');
+      if (form) form.addEventListener('submit', handleV2Submit);
+    }).catch(err => {
+      console.warn('V.2 module load failed:', err);
+    });
+  }
+
+  function populateLeagueSelect() {
+    if (!v2Api) return;
+    const leagueSelect = document.getElementById('v2-league-select');
+    if (!leagueSelect) return;
+
+    v2Api.fetchLeagues().then(leagues => {
+      leagueSelect.innerHTML = '<option value="">Select league…</option>';
+      leagues.forEach(lg => {
+        const opt = document.createElement('option');
+        opt.value = lg.code;
+        opt.textContent = lg.name;
+        leagueSelect.appendChild(opt);
+      });
+
+      // When league changes, populate teams
+      leagueSelect.addEventListener('change', () => {
+        const leagueCode = leagueSelect.value;
+        const season = document.getElementById('v2-season-input')?.value;
+        if (leagueCode) populateTeamSelects(leagueCode, season);
+      });
+    });
+  }
+
+  function populateTeamSelects(leagueCode, season) {
+    if (!v2Api) return;
+    const homeSelect = document.getElementById('v2-home-team');
+    const awaySelect = document.getElementById('v2-away-team');
+    if (!homeSelect || !awaySelect) return;
+
+    v2Api.fetchTeams(leagueCode, season).then(teams => {
+      const options = ['<option value="">Select team…</option>',
+        ...teams.map(t => `<option value="${t.id}">${t.name}</option>`)
+      ].join('');
+      homeSelect.innerHTML = options;
+      awaySelect.innerHTML = options;
+    });
+  }
+
+  async function handleV2Submit(e) {
+    e.preventDefault();
+    const form = e.target;
+
+    const leagueId = document.getElementById('v2-league-select')?.value;
+    const season = document.getElementById('v2-season-input')?.value;
+    const homeTeamId = parseInt(document.getElementById('v2-home-team')?.value);
+    const awayTeamId = parseInt(document.getElementById('v2-away-team')?.value);
+    const fixtureDate = document.getElementById('v2-fixture-date')?.value;
+
+    if (!leagueId || !season || !homeTeamId || !awayTeamId || !fixtureDate) {
+      const errDiv = document.getElementById('v2-error');
+      if (errDiv && v2RenderError) {
+        v2RenderError({ error: 'Please fill in all fields', code: 'VALIDATION' }, errDiv);
+      }
+      return;
+    }
+
+    // Show loading state
+    setV2Loading(true);
+    clearV2Results();
+
+    const payload = {
+      leagueId,
+      season,
+      homeTeamId,
+      awayTeamId,
+      fixtureDate,
+      includePlayerImpact: true,
+      includeFormationImpact: true,
+      includeScorePrediction: true,
+    };
+
+    const result = await v2Api.fetchPrediction(payload);
+
+    setV2Loading(false);
+
+    if (result && result.error) {
+      const errDiv = document.getElementById('v2-error');
+      if (errDiv && v2RenderError) {
+        errDiv.style.display = 'block';
+        v2RenderError(result, errDiv);
+      }
+      return;
+    }
+
+    // Render all sections
+    renderV2Response(result);
+  }
+
+  function renderV2Response(response) {
+    const errDiv = document.getElementById('v2-error');
+    if (errDiv) errDiv.style.display = 'none';
+
+    // Match header
+    const headerDiv = document.getElementById('v2-match-header');
+    if (headerDiv && response.fixture) {
+      const f = response.fixture;
+      headerDiv.innerHTML = `
+        <div class="v2-match-header">
+          <span class="v2-league-label">${f.league} · ${f.season}</span>
+          <div class="v2-matchup">
+            <span class="v2-team-name">${f.homeTeam?.name || ''}</span>
+            <span class="v2-vs">vs</span>
+            <span class="v2-team-name">${f.awayTeam?.name || ''}</span>
+          </div>
+          <span class="v2-date">${f.date}</span>
+        </div>
+      `;
+    }
+
+    // Prediction card
+    const cardDiv = document.getElementById('v2-prediction-card');
+    if (cardDiv && v2RenderPredictionCard) v2RenderPredictionCard(response, cardDiv);
+
+    // Scorelines
+    const slDiv = document.getElementById('v2-scorelines');
+    if (slDiv && v2RenderScorelines) v2RenderScorelines(response.topScorelines, slDiv);
+
+    // Team comparison
+    const compDiv = document.getElementById('v2-team-comparison');
+    if (compDiv && response.teamComparison) {
+      const tc = response.teamComparison;
+      compDiv.innerHTML = `
+        <div class="v2-team-comparison">
+          <h3 class="v2-section-title">Team Comparison</h3>
+          <div class="v2-comparison-grid">
+            <div class="v2-comparison-col">
+              <h4>Home: ${response.fixture?.homeTeam?.name || ''}</h4>
+              <p>Form: <strong>${tc.homeForm.formLast5}</strong></p>
+              <p>Goals per game: <strong>${tc.homeForm.goalsPerGame}</strong></p>
+              <p>Conceded per game: <strong>${tc.homeForm.concededPerGame}</strong></p>
+            </div>
+            <div class="v2-comparison-col">
+              <h4>Away: ${response.fixture?.awayTeam?.name || ''}</h4>
+              <p>Form: <strong>${tc.awayForm.formLast5}</strong></p>
+              <p>Goals per game: <strong>${tc.awayForm.goalsPerGame}</strong></p>
+              <p>Conceded per game: <strong>${tc.awayForm.concededPerGame}</strong></p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Formation impact
+    const formDiv = document.getElementById('v2-formation-impact');
+    if (formDiv && v2RenderFormationImpact) v2RenderFormationImpact(response.formationImpact, formDiv);
+
+    // Player impact
+    const playerDiv = document.getElementById('v2-player-impact');
+    if (playerDiv && v2RenderPlayerImpact) v2RenderPlayerImpact(response.playerImpact, playerDiv);
+
+    // Explanation / key factors
+    const explDiv = document.getElementById('v2-explanation');
+    if (explDiv && response.keyFactors && response.keyFactors.length) {
+      const items = response.keyFactors.map(f => `
+        <li class="v2-factor v2-factor-${f.impact} v2-factor-dir-${f.direction}">
+          <span class="v2-factor-icon" aria-hidden="true">
+            ${f.impact === 'positive' ? '↑' : f.impact === 'negative' ? '↓' : '—'}
+          </span>
+          ${f.description}
+        </li>
+      `).join('');
+      explDiv.innerHTML = `
+        <div class="v2-explanation-section">
+          <h3 class="v2-section-title">Key Factors</h3>
+          <ul class="v2-factors-list">${items}</ul>
+        </div>
+      `;
+    }
+  }
+
+  function clearV2Results() {
+    ['v2-match-header', 'v2-prediction-card', 'v2-scorelines', 'v2-team-comparison',
+     'v2-formation-impact', 'v2-player-impact', 'v2-explanation'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+  }
+
+  function setV2Loading(loading) {
+    const btn = document.querySelector('#v2-predict-form button[type="submit"]');
+    if (!btn) return;
+    if (loading) {
+      btn.disabled = true;
+      btn.textContent = 'Predicting…';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Predict';
+    }
+  }
+})();

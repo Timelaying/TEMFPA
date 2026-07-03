@@ -668,6 +668,107 @@
           </div>
         </div>
       </section>
+
+      <!-- ================================================================= -->
+      <!-- V.2 Prediction Panel                                               -->
+      <!-- ================================================================= -->
+
+      <div class="v2-toggle-wrapper container">
+        <button id="v2-toggle" class="button button-primary v2-toggle-btn" type="button">
+          Switch to V.2 Prediction
+        </button>
+      </div>
+
+      <section id="v2-panel" class="v2-panel section" style="display:none;" aria-label="V.2 Prediction Engine">
+        <div class="container">
+
+          <div class="v2-panel-header">
+            <div class="eyebrow"><span class="status-dot"></span> V.2 Prediction Engine</div>
+            <h2>AI-Powered Match Prediction</h2>
+            <p>Enter a matchup to receive a full prediction with scorelines, form comparison, formation analysis, and player impact.</p>
+          </div>
+
+          <!-- Prediction form -->
+          <form id="v2-predict-form" class="v2-form" novalidate>
+            <div class="v2-form-grid">
+
+              <label class="field-group">
+                <span class="field-label">League</span>
+                <span class="select-shell">
+                  <select id="v2-league-select" name="leagueId" required aria-label="League">
+                    <option value="">Loading leagues…</option>
+                  </select>
+                  <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+                </span>
+              </label>
+
+              <label class="field-group">
+                <span class="field-label">Season</span>
+                <input id="v2-season-input" class="v2-input" type="text" name="season"
+                  placeholder="2023/2024" value="2023/2024" required aria-label="Season" />
+              </label>
+
+              <label class="field-group">
+                <span class="field-label">Home Team</span>
+                <span class="select-shell">
+                  <select id="v2-home-team" name="homeTeamId" required aria-label="Home team">
+                    <option value="">Select league first…</option>
+                  </select>
+                  <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+                </span>
+              </label>
+
+              <label class="field-group">
+                <span class="field-label">Away Team</span>
+                <span class="select-shell">
+                  <select id="v2-away-team" name="awayTeamId" required aria-label="Away team">
+                    <option value="">Select league first…</option>
+                  </select>
+                  <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+                </span>
+              </label>
+
+              <label class="field-group">
+                <span class="field-label">Match Date</span>
+                <input id="v2-fixture-date" class="v2-input" type="date" name="fixtureDate"
+                  required aria-label="Match date" />
+              </label>
+
+            </div>
+
+            <button class="button button-primary v2-submit-btn" type="submit">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 1.5 5.2L17 9l-5.5 1.8L10 16l-1.5-5.2L3 9l5.5-1.8L10 2Z" /></svg>
+              Predict
+            </button>
+          </form>
+
+          <!-- Error state -->
+          <div id="v2-error" class="v2-error-container" style="display:none;" aria-live="assertive"></div>
+
+          <!-- Match header -->
+          <div id="v2-match-header" class="v2-match-header-container"></div>
+
+          <!-- Prediction card -->
+          <div id="v2-prediction-card" class="v2-card-container"></div>
+
+          <!-- Scorelines -->
+          <div id="v2-scorelines" class="v2-scorelines-container"></div>
+
+          <!-- Team comparison -->
+          <div id="v2-team-comparison" class="v2-comparison-container"></div>
+
+          <!-- Formation impact -->
+          <div id="v2-formation-impact" class="v2-formation-container"></div>
+
+          <!-- Player impact -->
+          <div id="v2-player-impact" class="v2-player-container"></div>
+
+          <!-- Key factors / explanation -->
+          <div id="v2-explanation" class="v2-explanation-container"></div>
+
+        </div>
+      </section>
+
     </main>
 
     <footer class="site-footer">

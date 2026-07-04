@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from temfpa.features.head_to_head import get_h2h_stats
 from temfpa.features.player_availability import get_team_absence_penalty
-from temfpa.features.team_form import get_team_form, get_team_home_away_form
 
 NEUTRAL = 0.5
 NEUTRAL_GOALS = 1.0

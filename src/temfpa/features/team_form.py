@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import datetime
-from typing import Optional
 
-from sqlalchemy import and_, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from temfpa.db.models import Fixture, MatchResult

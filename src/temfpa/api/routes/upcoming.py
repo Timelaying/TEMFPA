@@ -109,7 +109,6 @@ def _get_showcase(db: Session, limit: int) -> list[dict]:
     # Next domestic season starts in August
     next_season_start = datetime.date(year if month < 8 else year, 8, 9)
     results = []
-    day_offset = (next_season_start - today).days
     for i, (league_code, home_name, away_name) in enumerate(SHOWCASE[:limit]):
         league = db.query(League).filter_by(code=league_code).first()
         if not league:

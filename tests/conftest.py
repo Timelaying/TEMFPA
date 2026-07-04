@@ -10,21 +10,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from temfpa.db.base import Base
 from temfpa.db.models import (
-    Coach,
     Fixture,
     League,
-    LeagueSeasonTeam,
-    Lineup,
-    LineupPlayer,
-    MatchResult,
-    Player,
-    PlayerMatchStat,
-    Prediction,
-    PredictionExplanation,
-    PredictionScoreline,
     Season,
     Team,
-    TeamMatchStat,
 )
 
 

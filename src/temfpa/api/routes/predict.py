@@ -174,7 +174,7 @@ def predict(req: PredictionRequest, db: Session = Depends(get_db)):
             season_id=season_id,
             fixture_date=fixture_date,
         )
-    except Exception as exc:
+    except Exception:
         fv = {}
 
     X = pd.DataFrame([fv]) if fv else pd.DataFrame([{}])

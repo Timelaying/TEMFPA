@@ -10,13 +10,11 @@ from __future__ import annotations
 import argparse
 import datetime
 import logging
-import sys
 
 from sqlalchemy.orm import Session
 
 from temfpa.db.models import (
     Fixture,
-    InjuryOrAbsence,
     League,
     Lineup,
     LineupPlayer,
@@ -28,13 +26,6 @@ from temfpa.db.models import (
     TeamMatchStat,
 )
 from temfpa.db.session import SessionLocal
-from temfpa.ingestion.base import (
-    FixtureDTO,
-    LineupDTO,
-    MatchResultDTO,
-    PlayerMatchStatDTO,
-    TeamMatchStatDTO,
-)
 from temfpa.db.prediction_log_service import resolve_predictions
 from temfpa.ingestion.router import IngestionRouter
 

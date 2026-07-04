@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import datetime
 
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.datasets import make_classification
 
 from temfpa.models.elo import EloRating
 from temfpa.models.ensemble import EnsemblePredictor
@@ -15,7 +13,7 @@ from temfpa.models.evaluation import evaluate_classifier, evaluate_goals
 from temfpa.models.logistic import LogisticPredictor
 from temfpa.models.poisson import PoissonGoalModel
 from temfpa.models.random_forest import RandomForestPredictor
-from temfpa.models.scoreline import most_likely_score, top_k_scorelines
+from temfpa.models.scoreline import top_k_scorelines
 from temfpa.models.xgboost_model import XGBoostPredictor
 
 

@@ -10,15 +10,10 @@ from temfpa.ingestion.base import (
     FixtureDTO,
     MatchResultDTO,
     LineupDTO,
-    PlayerMatchStatDTO,
     ProviderError,
-    TeamMatchStatDTO,
 )
 from temfpa.ingestion.router import IngestionRouter
 from temfpa.ingestion.sync import (
-    _get_or_create_league,
-    _get_or_create_season,
-    _get_or_create_team,
     _normalise_team_name,
     sync_fixtures,
     sync_results,

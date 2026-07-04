@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import datetime
 import math
 from typing import Optional
 
@@ -307,7 +306,6 @@ class EloRating:
         Team names are loaded so that PRIOR_RATINGS can be used for
         teams with no match history.
         """
-        from sqlalchemy import and_
         from temfpa.db.models import Fixture, MatchResult, Season, Team
 
         elo = cls(k=k, base_rating=base_rating)

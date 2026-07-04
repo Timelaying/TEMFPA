@@ -5,8 +5,7 @@ from __future__ import annotations
 import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from temfpa.api.dependencies import get_db

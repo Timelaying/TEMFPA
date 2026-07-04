@@ -232,8 +232,11 @@ function setEl(id, content) {
 function renderMatchHeader(response) {
   const { fixture } = response;
   setEl('match-league', `${fixture.league} · ${deriveSeason(fixture.date)}`);
-  setEl('match-home-name', fixture.homeTeam?.name || '');
-  setEl('match-away-name', fixture.awayTeam?.name || '');
+  const leagueCode = document.getElementById('league-select')?.value || '';
+  const hf = teamFlag(fixture.homeTeam?.name || '', leagueCode);
+  const af = teamFlag(fixture.awayTeam?.name || '', leagueCode);
+  setEl('match-home-name', `${hf} ${fixture.homeTeam?.name || ''}`);
+  setEl('match-away-name', `${af} ${fixture.awayTeam?.name || ''}`);
   setEl('match-date-display', new Date(fixture.date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
 }
 
@@ -533,6 +536,87 @@ const LEAGUE_FLAGS = {
   SERIE_A: '🇮🇹', LIGUE_1: '🇫🇷', UCL: '🏆', WORLD_CUP: '🌍',
 };
 
+// National team & club flags — keyed by exact team name from DB
+const TEAM_FLAGS = {
+  // ── World Cup national teams ──────────────────────────────────────
+  'Algeria': '🇩🇿', 'Argentina': '🇦🇷', 'Australia': '🇦🇺',
+  'Austria': '🇦🇹', 'Belgium': '🇧🇪', 'Bosnia-Herz': '🇧🇦',
+  'Brazil': '🇧🇷', 'Cabo Verde': '🇨🇻', 'Canada': '🇨🇦',
+  'Colombia': '🇨🇴', 'Congo DR': '🇨🇩', 'Croatia': '🇭🇷',
+  'Curaçao': '🇨🇼', 'Czechia': '🇨🇿', "Côte d'Ivoire": '🇨🇮',
+  'Ecuador': '🇪🇨', 'Egypt': '🇪🇬', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'France': '🇫🇷', 'Germany': '🇩🇪', 'Ghana': '🇬🇭',
+  'Haiti': '🇭🇹', 'IR Iran': '🇮🇷', 'Iraq': '🇮🇶',
+  'Japan': '🇯🇵', 'Jordan': '🇯🇴', 'Korea Republic': '🇰🇷',
+  'Mexico': '🇲🇽', 'Morocco': '🇲🇦', 'Netherlands': '🇳🇱',
+  'New Zealand': '🇳🇿', 'Norway': '🇳🇴', 'Panama': '🇵🇦',
+  'Paraguay': '🇵🇾', 'Portugal': '🇵🇹', 'Qatar': '🇶🇦',
+  'Saudi Arabia': '🇸🇦', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Senegal': '🇸🇳',
+  'South Africa': '🇿🇦', 'Spain': '🇪🇸', 'Sweden': '🇸🇪',
+  'Switzerland': '🇨🇭', 'Tunisia': '🇹🇳', 'Türkiye': '🇹🇷',
+  'United States': '🇺🇸', 'Uruguay': '🇺🇾', 'Uzbekistan': '🇺🇿',
+  // ── EPL clubs ─────────────────────────────────────────────────────
+  'Arsenal': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Aston Villa': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Bournemouth': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Brentford': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Brighton & Hove Albion': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Chelsea': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Crystal Palace': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Everton': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Fulham': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Ipswich Town': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Leicester City': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Liverpool': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Manchester City': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Manchester United': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Newcastle United': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Nottingham Forest': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Southampton': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Tottenham Hotspur': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'West Ham United': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Wolverhampton Wanderers': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  // ── La Liga clubs ─────────────────────────────────────────────────
+  'Real Madrid': '🇪🇸', 'Barcelona': '🇪🇸', 'Atletico Madrid': '🇪🇸',
+  'Athletic Bilbao': '🇪🇸', 'Real Sociedad': '🇪🇸', 'Villarreal': '🇪🇸',
+  'Betis': '🇪🇸', 'Sevilla': '🇪🇸', 'Valencia': '🇪🇸',
+  'Osasuna': '🇪🇸', 'Celta Vigo': '🇪🇸', 'Girona': '🇪🇸',
+  'Rayo Vallecano': '🇪🇸', 'Mallorca': '🇪🇸', 'Getafe': '🇪🇸',
+  'Leganes': '🇪🇸', 'Real Valladolid': '🇪🇸', 'Las Palmas': '🇪🇸',
+  'Espanyol': '🇪🇸', 'Alaves': '🇪🇸',
+  // ── Bundesliga clubs ──────────────────────────────────────────────
+  'Bayern Munich': '🇩🇪', 'Borussia Dortmund': '🇩🇪',
+  'Bayer Leverkusen': '🇩🇪', 'RB Leipzig': '🇩🇪',
+  'Eintracht Frankfurt': '🇩🇪', 'Stuttgart': '🇩🇪',
+  'Borussia Monchengladbach': '🇩🇪', 'Freiburg': '🇩🇪',
+  'SC Freiburg': '🇩🇪', 'Hoffenheim': '🇩🇪', 'Werder Bremen': '🇩🇪',
+  'Mainz': '🇩🇪', 'Augsburg': '🇩🇪', 'Union Berlin': '🇩🇪',
+  'Wolfsburg': '🇩🇪', 'St. Pauli': '🇩🇪', 'Holstein Kiel': '🇩🇪',
+  'Hamburger SV': '🇩🇪',
+  // ── Serie A clubs ─────────────────────────────────────────────────
+  'Inter Milan': '🇮🇹', 'AC Milan': '🇮🇹', 'Juventus': '🇮🇹',
+  'Napoli': '🇮🇹', 'Atalanta': '🇮🇹', 'Lazio': '🇮🇹',
+  'Roma': '🇮🇹', 'Fiorentina': '🇮🇹', 'Bologna': '🇮🇹',
+  'Torino': '🇮🇹', 'Monza': '🇮🇹', 'Genoa': '🇮🇹',
+  'Udinese': '🇮🇹', 'Cagliari': '🇮🇹', 'Lecce': '🇮🇹',
+  'Empoli': '🇮🇹', 'Hellas Verona': '🇮🇹', 'Como': '🇮🇹',
+  'Parma': '🇮🇹', 'Venezia': '🇮🇹',
+  // ── Ligue 1 clubs ─────────────────────────────────────────────────
+  'Paris Saint-Germain': '🇫🇷', 'Monaco': '🇲🇨', 'Lille': '🇫🇷',
+  'Lyon': '🇫🇷', 'Nice': '🇫🇷', 'Marseille': '🇫🇷',
+  'Lens': '🇫🇷', 'Rennes': '🇫🇷', 'Strasbourg': '🇫🇷',
+  'Toulouse': '🇫🇷', 'Brest': '🇫🇷', 'Reims': '🇫🇷',
+  'Nantes': '🇫🇷', 'Montpellier': '🇫🇷', 'Auxerre': '🇫🇷',
+  'Angers': '🇫🇷', 'Saint-Etienne': '🇫🇷', 'Le Havre': '🇫🇷',
+  // ── UCL non-Big5 clubs ────────────────────────────────────────────
+  'Benfica': '🇵🇹', 'Porto': '🇵🇹', 'Sporting CP': '🇵🇹',
+  'Sporting Lisbon': '🇵🇹', 'Braga': '🇵🇹',
+  'Ajax': '🇳🇱', 'PSV Eindhoven': '🇳🇱', 'Feyenoord': '🇳🇱', 'AZ Alkmaar': '🇳🇱',
+  'Celtic': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Rangers': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'Club Brugge': '🇧🇪', 'Anderlecht': '🇧🇪', 'Antwerp': '🇧🇪',
+  'Galatasaray': '🇹🇷', 'Fenerbahce': '🇹🇷', 'Besiktas': '🇹🇷',
+  'Shakhtar Donetsk': '🇺🇦', 'Dynamo Kyiv': '🇺🇦',
+  'Red Star Belgrade': '🇷🇸', 'GNK Dinamo Zagreb': '🇭🇷',
+  'Copenhagen': '🇩🇰', 'Young Boys': '🇨🇭',
+  'Red Bull Salzburg': '🇦🇹', 'Sturm Graz': '🇦🇹',
+  'Slavia Prague': '🇨🇿',
+};
+
+/** Return flag emoji for a team name, falling back to the league flag. */
+function teamFlag(name, leagueCode) {
+  return TEAM_FLAGS[name] || LEAGUE_FLAGS[leagueCode] || '⚽';
+}
+
 async function loadUpcomingPredictions() {
   const grid = document.getElementById('upcoming-grid');
   const loading = document.getElementById('upcoming-loading');
@@ -584,6 +668,9 @@ function renderUpcomingCard(p) {
     weekday: 'short', day: 'numeric', month: 'short'
   });
 
+  const homeFlag = teamFlag(p.homeTeam.name, p.leagueCode);
+  const awayFlag = teamFlag(p.awayTeam.name, p.leagueCode);
+
   return `
     <article class="upcoming-card ${winnerClass}" data-league="${p.leagueCode}">
       <div class="upcoming-card-top">
@@ -591,12 +678,12 @@ function renderUpcomingCard(p) {
         <span class="upcoming-date">${dateStr}</span>
       </div>
       <div class="upcoming-teams">
-        <span class="upcoming-team ${p.resultKey === 'home' ? 'predicted-winner' : ''}">${p.homeTeam.name}</span>
+        <span class="upcoming-team ${p.resultKey === 'home' ? 'predicted-winner' : ''}"><span class="team-flag">${homeFlag}</span>${p.homeTeam.name}</span>
         <div class="upcoming-score-box">
           <span class="upcoming-score">${p.likelyScore}</span>
           <span class="upcoming-confidence badge-${p.confidence}">${p.confidence}</span>
         </div>
-        <span class="upcoming-team away-team ${p.resultKey === 'away' ? 'predicted-winner' : ''}">${p.awayTeam.name}</span>
+        <span class="upcoming-team away-team ${p.resultKey === 'away' ? 'predicted-winner' : ''}"><span class="team-flag">${awayFlag}</span>${p.awayTeam.name}</span>
       </div>
       <div class="upcoming-probs">
         <div class="upcoming-bar">
@@ -656,9 +743,11 @@ function _renderRecentList(recent) {
       ? `<span class="acc-score-compare"><span class="acc-score-pred" title="Predicted">${predictedScore}</span><span class="acc-score-sep">→</span><span class="acc-score-actual">${actualScore}</span></span>`
       : (predictedScore ? `<span class="acc-score-compare"><span class="acc-score-pred">${predictedScore}</span></span>` : '<span></span>');
 
+    const hFlag = teamFlag(r.home_team, r.league_code);
+    const aFlag = teamFlag(r.away_team, r.league_code);
     return `<div class="acc-recent-item">
       <div>
-        <div class="acc-recent-teams">${r.home_team} vs ${r.away_team}</div>
+        <div class="acc-recent-teams"><span class="team-flag">${hFlag}</span>${r.home_team} <span class="acc-vs">vs</span> <span class="team-flag">${aFlag}</span>${r.away_team}</div>
         <div class="acc-recent-meta">${flag} ${r.league_code} · ${dateStr}</div>
       </div>
       <span class="acc-recent-pred badge-${r.predicted_confidence}">${resultLabel}</span>

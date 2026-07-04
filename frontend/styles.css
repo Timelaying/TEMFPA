@@ -779,3 +779,18 @@ svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.8;
 .acc-score-pred { color: var(--ink-soft); }
 .acc-score-sep { color: var(--ink-soft); font-size: 10px; }
 .acc-score-actual { color: var(--ink); }
+
+/* ─── Team flags ───────────────────────────────────────────── */
+.team-flag {
+  display: inline-block;
+  margin-right: 5px;
+  font-size: 1.1em;
+  line-height: 1;
+  vertical-align: middle;
+}
+.acc-vs {
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: 11px;
+  margin: 0 4px;
+}

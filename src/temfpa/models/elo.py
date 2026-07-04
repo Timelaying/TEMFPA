@@ -329,7 +329,6 @@ class EloRating:
             )
 
         if before_date is not None:
-            import datetime
             if isinstance(before_date, datetime.date) and not isinstance(before_date, datetime.datetime):
                 before_date = datetime.datetime.combine(before_date, datetime.time.max)
             query = query.filter(Fixture.fixture_date < before_date)

@@ -15,6 +15,7 @@ from temfpa.ingestion.base import (
     TeamMatchStatDTO,
 )
 from temfpa.ingestion.fbref_adapter import FBrefAdapter
+from temfpa.ingestion.football_data_org_adapter import FootballDataOrgAdapter
 from temfpa.ingestion.matchhistory_adapter import MatchHistoryAdapter
 from temfpa.ingestion.sofascore_adapter import SofascoreAdapter
 
@@ -28,16 +29,18 @@ class NoDataAvailableError(Exception):
 class IngestionRouter:
     """Tries each provider in order and returns the first successful response.
 
-    Provider priority (all free, no API key required):
-      1. FBref  — richest data (results, lineups, player stats, team stats)
-      2. Sofascore — fast fallback for schedule/results
-      3. MatchHistory — historical CSV bulk fallback
+    Provider priority:
+      1. FBref  — richest data for Big 5 leagues (results, lineups, player stats)
+      2. FootballDataOrg — UCL + Big 5, requires free API key (FOOTBALL_DATA_KEY in .env)
+      3. Sofascore — fast fallback for schedule/results
+      4. MatchHistory — historical CSV bulk fallback
     """
 
     def __init__(self, providers: list[DataProvider] | None = None) -> None:
         if providers is None:
             providers = [
                 FBrefAdapter(),
+                FootballDataOrgAdapter(),
                 SofascoreAdapter(),
                 MatchHistoryAdapter(),
             ]

@@ -42,13 +42,19 @@ def create_app() -> FastAPI:
         return {"status": "ok", "version": "2.0.0"}
 
     # --- Mount routers ---
+    from temfpa.api.routes.accuracy import router as accuracy_router
     from temfpa.api.routes.fixtures import router as fixtures_router
     from temfpa.api.routes.leagues import router as leagues_router
     from temfpa.api.routes.predict import router as predict_router
+    from temfpa.api.routes.sync_trigger import router as sync_router
+    from temfpa.api.routes.upcoming import router as upcoming_router
 
     app.include_router(leagues_router)
     app.include_router(fixtures_router)
     app.include_router(predict_router)
+    app.include_router(upcoming_router)
+    app.include_router(accuracy_router)
+    app.include_router(sync_router)
 
     # --- Serve frontend static files ---
     frontend_dir = Path(__file__).parent.parent.parent.parent.parent / "frontend"

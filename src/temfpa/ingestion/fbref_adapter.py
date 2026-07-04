@@ -25,6 +25,12 @@ logger = logging.getLogger(__name__)
 # FBref league code mapping: our internal code → soccerdata league string
 LEAGUE_MAP: dict[str, str] = {
     "EPL": "ENG-Premier League",
+    "LA_LIGA": "ESP-La Liga",
+    "BUNDESLIGA": "GER-Bundesliga",
+    "SERIE_A": "ITA-Serie A",
+    "LIGUE_1": "FRA-Ligue 1",
+    "WORLD_CUP": "INT-World Cup",
+    # Legacy codes kept for backwards compat
     "ESP1": "ESP-La Liga",
     "GER1": "GER-Bundesliga",
     "ITA1": "ITA-Serie A",
@@ -33,11 +39,15 @@ LEAGUE_MAP: dict[str, str] = {
 
 
 def _fbref_season(label: str) -> str:
-    """Convert "2023/2024" → "2324" (FBref season format)."""
+    """Convert season label to FBref format.
+
+    "2023/2024" → "2324"  (domestic leagues)
+    "2026"      → "2026"  (World Cup / single-year tournaments)
+    """
     parts = label.split("/")
     if len(parts) == 2:
         return parts[0][-2:] + parts[1][-2:]
-    return label
+    return label  # already a plain year e.g. "2026"
 
 
 def _parse_score(score: str | float | None) -> tuple[int | None, int | None]:
@@ -276,7 +286,7 @@ class FBrefAdapter:
         fbref_league = self._get_fbref_league(league_code)
         try:
             fbref = sd.FBref(leagues=fbref_league, seasons=season_label)
-            stats_df = fbref.read_team_match_stats(stat_type="summary").reset_index()
+            stats_df = fbref.read_team_match_stats(stat_type="shooting").reset_index()
         except Exception as exc:
             raise ProviderError(f"FBref fetch_team_stats failed: {exc}") from exc
 

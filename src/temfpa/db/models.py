@@ -405,3 +405,48 @@ class PredictionExplanation(Base):
     prediction: Mapped[Prediction] = relationship(
         "Prediction", back_populates="explanation"
     )
+
+
+class PredictionLog(Base):
+    """One row per prediction shown to the user — tracked for accuracy comparison."""
+
+    __tablename__ = "prediction_logs"
+    __table_args__ = (
+        # Prevent duplicate entries for the same matchup from the same source.
+        # fixture_id can be NULL for showcase matchups, so key on team IDs + date.
+        UniqueConstraint("home_team_id", "away_team_id", "fixture_date", "source"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Fixture FK — NULL for showcase matchups not yet in the fixtures table
+    fixture_id: Mapped[int | None] = mapped_column(
+        ForeignKey("fixtures.id"), nullable=True, index=True
+    )
+
+    # Denormalised for convenience
+    league_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    home_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), nullable=False)
+    away_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), nullable=False)
+    fixture_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+
+    # Prediction at log time
+    predicted_result: Mapped[str] = mapped_column(String(10), nullable=False)     # home/draw/away
+    predicted_confidence: Mapped[str] = mapped_column(String(10), nullable=False)  # High/Medium/Low
+    home_win_prob: Mapped[float | None] = mapped_column(Float, nullable=True)
+    draw_prob: Mapped[float | None] = mapped_column(Float, nullable=True)
+    away_win_prob: Mapped[float | None] = mapped_column(Float, nullable=True)
+    likely_score: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+    # "upcoming" (auto-generated) | "manual" (user submitted)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="upcoming")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, server_default=func.now()
+    )
+
+    # Filled in after the match result is known
+    actual_result: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    actual_home_goals: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    actual_away_goals: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    resolved_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)

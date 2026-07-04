@@ -35,6 +35,7 @@ from temfpa.ingestion.base import (
     PlayerMatchStatDTO,
     TeamMatchStatDTO,
 )
+from temfpa.db.prediction_log_service import resolve_predictions
 from temfpa.ingestion.router import IngestionRouter
 
 logger = logging.getLogger(__name__)
@@ -56,17 +57,23 @@ def _get_or_create_league(db: Session, code: str, name: str = "", country: str =
 def _get_or_create_season(db: Session, league: League, label: str) -> Season:
     season = db.query(Season).filter_by(league_id=league.id, label=label).first()
     if not season:
-        # Estimate dates from label e.g. "2023/2024"
         try:
-            start_year = int(label.split("/")[0])
+            parts = label.split("/")
+            if len(parts) == 2:
+                # Standard "2023/2024" format — domestic league
+                start_year = int(parts[0])
+                start = datetime.date(start_year, 8, 1)
+                end = datetime.date(start_year + 1, 6, 30)
+            else:
+                # Plain year e.g. "2026" — World Cup / tournament
+                year = int(label)
+                start = datetime.date(year, 6, 1)
+                end = datetime.date(year, 7, 31)
         except (ValueError, IndexError):
-            start_year = datetime.date.today().year
-        season = Season(
-            league_id=league.id,
-            label=label,
-            start_date=datetime.date(start_year, 8, 1),
-            end_date=datetime.date(start_year + 1, 6, 30),
-        )
+            year = datetime.date.today().year
+            start = datetime.date(year, 8, 1)
+            end = datetime.date(year + 1, 6, 30)
+        season = Season(league_id=league.id, label=label, start_date=start, end_date=end)
         db.add(season)
         db.flush()
     return season
@@ -75,6 +82,7 @@ def _get_or_create_season(db: Session, league: League, label: str) -> Season:
 def _normalise_team_name(name: str) -> str:
     """Collapse common name variants to a canonical form."""
     aliases: dict[str, str] = {
+        # EPL
         "Man United": "Manchester United",
         "Man Utd": "Manchester United",
         "Manchester Utd": "Manchester United",
@@ -89,6 +97,15 @@ def _normalise_team_name(name: str) -> str:
         "Leicester": "Leicester City",
         "Nottingham": "Nottingham Forest",
         "Nott'm Forest": "Nottingham Forest",
+        # World Cup national teams
+        "USA": "United States",
+        "South Korea": "Korea Republic",
+        "Ivory Coast": "Côte d'Ivoire",
+        "Bosnia & Herzegovina": "Bosnia-Herz",
+        "Bosnia–Herz": "Bosnia-Herz",
+        "DR Congo": "Congo DR",
+        "Iran": "IR Iran",
+        "Turkey": "Türkiye",
     }
     return aliases.get(name.strip(), name.strip())
 
@@ -248,6 +265,13 @@ def sync_results(
 
     db.commit()
     logger.info("sync_results: %d results for %s %s", updated, league_code, season_label)
+
+    # Resolve any pending prediction logs now that results are in
+    try:
+        resolve_predictions(db)
+    except Exception:
+        logger.warning("resolve_predictions failed; skipping", exc_info=True)
+
     return updated
 
 

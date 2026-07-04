@@ -50,8 +50,10 @@ class PoissonGoalModel:
             lambda_home = float(self._home_model.predict(X_sub)[0])
             lambda_away = float(self._away_model.predict(X_sub)[0])
         else:
+            # Realistic defaults based on top-league averages:
+            # home teams score ~1.5, away teams ~1.2 goals per game.
             lambda_home = 1.5
-            lambda_away = 1.0
+            lambda_away = 1.2
 
         lambda_home = float(np.clip(lambda_home, CLAMP_MIN, CLAMP_MAX))
         lambda_away = float(np.clip(lambda_away, CLAMP_MIN, CLAMP_MAX))

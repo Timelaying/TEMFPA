@@ -145,12 +145,17 @@ def train_all(
 
     X, y_outcome, y_home_goals, y_away_goals = build_training_data(db, league_id=league_id)
 
+    # Minimum sample threshold: models trained on fewer than 50 matches are
+    # unreliable and will produce badly biased predictions.  Below this threshold
+    # we skip training and return unfitted stubs so the Elo fallback is used.
+    MIN_SAMPLES = 50
+
     logistic = LogisticPredictor()
     rf = RandomForestPredictor()
     xgb_model = XGBoostPredictor()
     poisson = PoissonGoalModel()
 
-    if len(X) >= 10:
+    if len(X) >= MIN_SAMPLES:
         X_train, X_test, y_train, y_test = time_split(X, y_outcome)
         yh_train, _, ya_train, _ = time_split(X, y_home_goals)
 
@@ -158,27 +163,26 @@ def train_all(
         rf.fit(X_train, y_train)
         xgb_model.fit(X_train, y_train)
         poisson.fit(X_train, yh_train, ya_train)
-    elif len(X) > 0:
-        logistic.fit(X, y_outcome)
-        rf.fit(X, y_outcome)
-        xgb_model.fit(X, y_outcome)
-        poisson.fit(X, y_home_goals, y_away_goals)
 
-    # Build Elo from DB
-    elo = EloRating.build_from_db(db, league_id=league_id)
+        # Build Elo from DB
+        elo = EloRating.build_from_db(db, league_id=league_id)
 
-    # Ensemble: logistic + RF + XGB with equal weights
-    ensemble = EnsemblePredictor(
-        models=[logistic, rf, xgb_model],
-        weights=[1.0, 1.0, 1.0],
-    )
+        # Ensemble: logistic + RF + XGB with equal weights
+        ensemble = EnsemblePredictor(
+            models=[logistic, rf, xgb_model],
+            weights=[1.0, 1.0, 1.0],
+        )
 
-    # Save all models
-    logistic.save(save_dir / "logistic.joblib")
-    rf.save(save_dir / "random_forest.joblib")
-    xgb_model.save(save_dir / "xgboost.joblib")
-    poisson.save(save_dir / "poisson.joblib")
-    ensemble.save(save_dir / "ensemble.joblib")
+        # Only persist models when trained on sufficient data
+        logistic.save(save_dir / "logistic.joblib")
+        rf.save(save_dir / "random_forest.joblib")
+        xgb_model.save(save_dir / "xgboost.joblib")
+        poisson.save(save_dir / "poisson.joblib")
+        ensemble.save(save_dir / "ensemble.joblib")
+    else:
+        # Not enough data — return unfitted stubs; Elo fallback will handle predictions
+        elo = EloRating.build_from_db(db, league_id=league_id)
+        ensemble = EnsemblePredictor(models=[logistic, rf, xgb_model], weights=[1.0, 1.0, 1.0])
 
     return {
         "logistic": logistic,

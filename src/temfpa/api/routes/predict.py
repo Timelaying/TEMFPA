@@ -184,34 +184,60 @@ def predict(req: PredictionRequest, db: Session = Depends(get_db)):
     ensemble = _load_ensemble(save_dir)
     poisson = _load_poisson(save_dir)
 
-    if ensemble is None:
-        # Try to train on available DB data
-        try:
-            from temfpa.models.trainer import train_all
-            trained = train_all(db, save_dir=save_dir, league_id=league.id)
-            ensemble = trained.get("ensemble")
-            poisson = trained.get("poisson")
-        except Exception:
-            ensemble = None
-            poisson = None
+    # Detect whether we have real match history for these teams *in this league*.
+    # For cross-league competitions (UCL), EPL form for Man City should not drive
+    # the prediction — only use the ensemble when there is league-specific history.
+    league_finished = (
+        db.query(Fixture)
+        .join(MatchResult, MatchResult.fixture_id == Fixture.id)
+        .filter(
+            Fixture.season_id == season_id,
+            Fixture.status == "FINISHED",
+        )
+        .count()
+    ) if season_id else 0
+
+    has_real_data = (
+        league_finished >= 10
+        and fv.get("h2h_total", 0) > 0
+    )
 
     # --- Predict outcome ---
-    if ensemble is not None and not X.empty and len(X.columns) > 0:
+    # Only use saved ensemble if it exists AND we have real feature data.
+    # Never auto-train during a prediction request — that risks persisting
+    # models trained on empty/tiny datasets.
+    neutral_venue = (league.code == "WORLD_CUP")
+
+    if ensemble is not None and not X.empty and len(X.columns) > 0 and has_real_data:
         try:
             result_key, confidence, probs = ensemble.predict_outcome(X)
         except Exception:
-            result_key, confidence, probs = _elo_fallback(db, req.homeTeamId, req.awayTeamId)
+            result_key, confidence, probs = _elo_fallback(db, req.homeTeamId, req.awayTeamId, neutral_venue)
     else:
-        result_key, confidence, probs = _elo_fallback(db, req.homeTeamId, req.awayTeamId)
+        result_key, confidence, probs = _elo_fallback(db, req.homeTeamId, req.awayTeamId, neutral_venue)
 
     # --- Predict goals ---
     if poisson is not None and not X.empty and len(X.columns) > 0:
         try:
             lambda_home, lambda_away = poisson.predict(X)
         except Exception:
-            lambda_home, lambda_away = 1.5, 1.0
+            # Derive expected goals from Elo win probabilities.
+            # League average: 1.5 home goals, 1.2 away goals per match.
+            # Scale by team relative strength from the Elo probs.
+            # A team with 70% win prob should score more than league avg.
+            home_strength = probs.get("home", 0.45) / 0.45  # ratio to league avg home win rate
+            away_strength = probs.get("away", 0.30) / 0.30
+            lambda_home = max(0.5, min(4.0, 1.5 * home_strength))
+            lambda_away = max(0.5, min(4.0, 1.2 * away_strength))
     else:
-        lambda_home, lambda_away = 1.5, 1.0
+        # Derive expected goals from Elo win probabilities.
+        # League average: 1.5 home goals, 1.2 away goals per match.
+        # Scale by team relative strength from the Elo probs.
+        # A team with 70% win prob should score more than league avg.
+        home_strength = probs.get("home", 0.45) / 0.45  # ratio to league avg home win rate
+        away_strength = probs.get("away", 0.30) / 0.30
+        lambda_home = max(0.5, min(4.0, 1.5 * home_strength))
+        lambda_away = max(0.5, min(4.0, 1.2 * away_strength))
 
     # --- Scorelines ---
     if req.includeScorePrediction:
@@ -392,6 +418,27 @@ def predict(req: PredictionRequest, db: Session = Depends(get_db)):
         )
         db.commit()
 
+    # --- Log to PredictionLog for accuracy tracking ---
+    try:
+        from temfpa.db.prediction_log_service import log_prediction
+        _matchup = {
+            "leagueCode": league.code,
+            "homeTeamId": req.homeTeamId,
+            "awayTeamId": req.awayTeamId,
+            "fixtureDate": req.fixtureDate.isoformat(),
+        }
+        _pred = {
+            "resultKey": result_key,
+            "confidence": confidence,
+            "homeWinProbability": round(probs.get("home", 0.45), 4),
+            "drawProbability": round(probs.get("draw", 0.25), 4),
+            "awayWinProbability": round(probs.get("away", 0.30), 4),
+            "likelyScore": likely_score,
+        }
+        log_prediction(db, matchup=_matchup, prediction=_pred, source="manual")
+    except Exception:
+        pass  # never let logging break a prediction response
+
     # --- Build response ---
     return PredictionResponse(
         fixture=FixtureInfo(
@@ -419,11 +466,13 @@ def predict(req: PredictionRequest, db: Session = Depends(get_db)):
     )
 
 
-def _elo_fallback(db, home_team_id: int, away_team_id: int) -> tuple[str, str, dict]:
+def _elo_fallback(db, home_team_id: int, away_team_id: int, neutral_venue: bool = False) -> tuple[str, str, dict]:
     """Fallback: use Elo-based probabilities."""
     try:
         from temfpa.models.elo import EloRating
         elo = EloRating.build_from_db(db)
+        if neutral_venue:
+            elo.HOME_ADVANTAGE = 0.0
         h, d, a = elo.expected_home_win_prob(home_team_id, away_team_id)
         probs = {"home": h, "draw": d, "away": a}
         max_prob = max(h, d, a)
